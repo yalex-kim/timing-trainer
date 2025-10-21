@@ -6,6 +6,7 @@ import { TrainingType, BodyPart, TrainingRange } from '@/types';
 import {
   BeatData,
   InputEvent,
+  InputType,
   TrainingSession,
   SessionResults as SessionResultsType,
   TimingFeedback as TimingFeedbackType,
@@ -15,6 +16,7 @@ import { useInputHandler } from '@/hooks/useInputHandler';
 import TimingFeedback from '@/components/TimingFeedback';
 import SessionResults from '@/components/SessionResults';
 import { ExpectedInputDisplay } from '@/components/TimingFeedback';
+import { CompactTouchButtons, isMobileDevice } from '@/components/TouchInputButtons';
 
 function TrainingContent() {
   const router = useRouter();
@@ -41,9 +43,17 @@ function TrainingContent() {
   const [currentSide, setCurrentSide] = useState<'left' | 'right'>('left');
   const [isActive, setIsActive] = useState(false);
 
+  // 모바일 감지
+  const [isMobile, setIsMobile] = useState(false);
+
   const intervalMs = 60000 / bpm;
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
   const startTimeRef = useRef<number>(0);
+
+  // 모바일 감지
+  useEffect(() => {
+    setIsMobile(isMobileDevice());
+  }, []);
 
   // 오디오 비프음
   const playBeep = useCallback(() => {
@@ -144,11 +154,30 @@ function TrainingContent() {
     console.log(`Beat ${currentBeat}: ${feedback.category} (${feedback.displayText})`);
   }, [session, currentBeat, isRunning]);
 
-  // 입력 핸들러 등록
+  // 입력 핸들러 등록 (키보드)
   useInputHandler({
     onInput: handleInput,
     enableKeyboard: true,
   });
+
+  // 터치 입력 핸들러
+  const handleTouchInput = useCallback((inputType: InputType) => {
+    if (!session || !isRunning) return;
+
+    const currentBeatData = session.beats[currentBeat];
+    if (!currentBeatData) return;
+
+    // 터치 이벤트 생성
+    const touchEvent: InputEvent = {
+      type: inputType,
+      timestamp: performance.now() - startTimeRef.current,
+      source: 'touch',
+      rawData: { inputType },
+    };
+
+    // 기존 handleInput 로직 재사용
+    handleInput(touchEvent);
+  }, [session, currentBeat, isRunning, handleInput]);
 
   // 비트 진행 (시각/청각 효과 + 비트 카운터)
   useEffect(() => {
@@ -293,11 +322,20 @@ function TrainingContent() {
           />
         )}
 
-        {/* 예상 입력 표시 */}
-        {currentBeatData && (
+        {/* 예상 입력 표시 (키보드만) */}
+        {!isMobile && currentBeatData && (
           <ExpectedInputDisplay
             expectedInputs={currentBeatData.expectedInput.expectedTypes}
             nextInputs={nextBeatData?.expectedInput.expectedTypes}
+          />
+        )}
+
+        {/* 터치 버튼 (모바일) */}
+        {isMobile && currentBeatData && (
+          <CompactTouchButtons
+            onTouch={handleTouchInput}
+            expectedInputs={currentBeatData.expectedInput.expectedTypes}
+            disabled={!isRunning}
           />
         )}
 
@@ -374,11 +412,20 @@ function TrainingContent() {
           />
         )}
 
-        {/* 예상 입력 표시 */}
-        {currentBeatData && (
+        {/* 예상 입력 표시 (키보드만) */}
+        {!isMobile && currentBeatData && (
           <ExpectedInputDisplay
             expectedInputs={currentBeatData.expectedInput.expectedTypes}
             nextInputs={nextBeatData?.expectedInput.expectedTypes}
+          />
+        )}
+
+        {/* 터치 버튼 (모바일) */}
+        {isMobile && currentBeatData && (
+          <CompactTouchButtons
+            onTouch={handleTouchInput}
+            expectedInputs={currentBeatData.expectedInput.expectedTypes}
+            disabled={!isRunning}
           />
         )}
 
