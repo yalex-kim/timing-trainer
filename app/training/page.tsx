@@ -119,9 +119,37 @@ function TrainingContent() {
     setSession((prev) => {
       if (!prev) return prev;
 
-      const beatIndex = currentBeat;
-      const currentBeatData = prev.beats[beatIndex];
-      if (!currentBeatData) return prev;
+      // 타임스탬프 기준으로 가장 가까운 비트 찾기
+      const inputTimestamp = inputEvent.timestamp;
+      let closestBeatIndex = -1;
+      let minDistance = Infinity;
+
+      // 입력 타임스탬프 기준으로 예상 비트 번호 계산
+      const estimatedBeatIndex = Math.round(inputTimestamp / intervalMs);
+
+      // 예상 비트 ±2 범위 내에서 가장 가까운 미입력 비트 찾기
+      const searchStart = Math.max(0, estimatedBeatIndex - 2);
+      const searchEnd = Math.min(prev.beats.length - 1, estimatedBeatIndex + 2);
+
+      for (let i = searchStart; i <= searchEnd; i++) {
+        const beat = prev.beats[i];
+        // 이미 입력된 비트는 건너뛰기
+        if (beat.actualInput !== null) continue;
+
+        const distance = Math.abs(inputTimestamp - beat.expectedTime);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestBeatIndex = i;
+        }
+      }
+
+      // 가까운 비트를 못 찾았거나, 너무 멀리 떨어져 있으면 무시
+      if (closestBeatIndex === -1 || minDistance > 500) {
+        console.log(`Input ignored: no valid beat found (timestamp: ${inputTimestamp}ms, closest distance: ${minDistance}ms)`);
+        return prev;
+      }
+
+      const currentBeatData = prev.beats[closestBeatIndex];
 
       // 타이밍 평가
       const { feedback, isCorrectInput } = TimingEvaluator.evaluateBeat(
@@ -143,16 +171,16 @@ function TrainingContent() {
       };
 
       const newBeats = [...prev.beats];
-      newBeats[beatIndex] = updatedBeat;
+      newBeats[closestBeatIndex] = updatedBeat;
 
       // 피드백 표시 (다음 입력까지 유지)
       setCurrentFeedback(feedback);
 
-      console.log(`Beat ${beatIndex}: ${feedback.category} (${feedback.displayText})`, updatedBeat);
+      console.log(`Beat ${closestBeatIndex}: ${feedback.category} (${feedback.displayText})`, updatedBeat);
 
       return { ...prev, beats: newBeats };
     });
-  }, [currentBeat]);
+  }, [intervalMs]);
 
   // 입력 핸들러 등록 (키보드)
   useInputHandler({
