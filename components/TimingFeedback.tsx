@@ -25,7 +25,7 @@ export default function TimingFeedback({
   if (!feedback) return null;
 
   return (
-    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none">
+    <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none">
       {/* 메인 피드백 */}
       <div
         className="text-center transition-all duration-200 ease-out animate-bounce-in"
@@ -35,7 +35,7 @@ export default function TimingFeedback({
       >
         {/* 피드백 메시지 */}
         <div
-          className="text-8xl font-black mb-4 drop-shadow-2xl"
+          className="text-7xl font-black mb-3 drop-shadow-2xl"
           style={{
             color: feedback.color,
             textShadow: `0 0 30px ${feedback.color}80, 0 0 60px ${feedback.color}40`,
@@ -45,9 +45,9 @@ export default function TimingFeedback({
         </div>
 
         {/* 편차 표시 */}
-        <div className="flex items-center justify-center gap-4 mb-4">
+        <div className="flex items-center justify-center gap-4 mb-3">
           <div
-            className="text-5xl font-bold bg-black bg-opacity-70 px-8 py-4 rounded-xl"
+            className="text-4xl font-bold bg-black bg-opacity-70 px-6 py-3 rounded-xl"
             style={{ color: feedback.color }}
           >
             {feedback.displayText}
@@ -56,7 +56,7 @@ export default function TimingFeedback({
           {/* 방향 표시 */}
           {feedback.direction !== 'on-time' && (
             <div
-              className="text-4xl"
+              className="text-3xl"
               style={{
                 color: feedback.direction === 'early' ? '#3b82f6' : '#f59e0b',
               }}
@@ -68,7 +68,7 @@ export default function TimingFeedback({
 
         {/* 점수 표시 */}
         {currentPoints !== undefined && (
-          <div className="text-3xl font-bold text-white bg-black bg-opacity-70 px-6 py-2 rounded-lg inline-block">
+          <div className="text-2xl font-bold text-white bg-black bg-opacity-70 px-5 py-2 rounded-lg inline-block">
             +{currentPoints.toFixed(0)} 점
           </div>
         )}

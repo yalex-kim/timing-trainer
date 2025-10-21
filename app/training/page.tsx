@@ -145,9 +145,8 @@ function TrainingContent() {
       const newBeats = [...prev.beats];
       newBeats[beatIndex] = updatedBeat;
 
-      // 피드백 표시 (1초간)
+      // 피드백 표시 (다음 입력까지 유지)
       setCurrentFeedback(feedback);
-      setTimeout(() => setCurrentFeedback(null), 1000);
 
       console.log(`Beat ${beatIndex}: ${feedback.category} (${feedback.displayText})`, updatedBeat);
 
