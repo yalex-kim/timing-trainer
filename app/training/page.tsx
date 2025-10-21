@@ -46,15 +46,30 @@ function TrainingContent() {
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   // sessionRef 동기화
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
 
+  // AudioContext 초기화 (재사용)
+  useEffect(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return () => {
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
+
   // 오디오 비프음
   const playBeep = useCallback(() => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (!audioContextRef.current) return;
+
+    const audioContext = audioContextRef.current;
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
@@ -227,8 +242,27 @@ function TrainingContent() {
         }, intervalMs * 0.3);
       }
 
-      // 비트 카운터 증가
+      // 비트 카운터 증가 전에 이전 비트 체크
       setCurrentBeat((prev) => {
+        // 이전 비트가 입력되지 않았다면 miss 피드백 표시
+        const currentSession = sessionRef.current;
+        if (currentSession && prev > 0) {
+          const previousBeat = currentSession.beats[prev - 1];
+          if (previousBeat && previousBeat.actualInput === null) {
+            // MISS 피드백 생성
+            const missFeedback: TimingFeedbackType = {
+              category: 'miss',
+              deviation: 999,
+              direction: 'late',
+              points: 0,
+              color: '#999999',
+              message: 'MISSED',
+              displayText: 'NO INPUT',
+            };
+            setCurrentFeedback(missFeedback);
+          }
+        }
+
         if (prev + 1 >= totalBeats) {
           clearInterval(beatTimer);
           // 훈련 종료
@@ -423,20 +457,26 @@ function TrainingContent() {
     );
   }
 
-  // 청각 훈련 모드
+  // 청각 훈련 모드 (시각 모드와 동일한 UI)
   if (trainingType === 'audio') {
-    // 터치 핸들러 (4분할)
-    const handleQuadrantTouch = (inputType: InputType) => (e: React.TouchEvent) => {
+    const shouldShowLeft = trainingRange === 'left' || trainingRange === 'both';
+    const shouldShowRight = trainingRange === 'right' || trainingRange === 'both';
+
+    // 터치 핸들러
+    const handleLeftTouch = (e: React.TouchEvent) => {
       e.preventDefault();
-      handleTouchInput(inputType);
+      const inputType = bodyPart === 'hand' ? 'left-hand' : 'left-foot';
+      handleTouchInput(inputType as InputType);
     };
 
-    const isExpected = (inputType: InputType) => {
-      return currentBeatData?.expectedInput.expectedTypes.includes(inputType);
+    const handleRightTouch = (e: React.TouchEvent) => {
+      e.preventDefault();
+      const inputType = bodyPart === 'hand' ? 'right-hand' : 'right-foot';
+      handleTouchInput(inputType as InputType);
     };
 
     return (
-      <div className="fixed inset-0 bg-gradient-to-br from-blue-900 to-purple-900">
+      <div className="fixed inset-0 bg-black">
         {/* 상단 정보 */}
         <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
           <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
@@ -469,77 +509,44 @@ function TrainingContent() {
           />
         )}
 
-        {/* 4분할 터치 영역 */}
-        <div className="h-full flex flex-col">
-          {/* 상단: 손 */}
-          <div className="flex-1 flex">
-            {/* 왼손 */}
+        {/* 청각 영역 (시각 모드와 동일, 터치 가능) */}
+        <div className="h-full flex">
+          {shouldShowLeft && (
             <div
-              onTouchStart={handleQuadrantTouch('left-hand')}
-              className={`flex-1 flex items-center justify-center border-2 transition-all ${
-                isExpected('left-hand')
-                  ? 'border-yellow-300 border-4 bg-blue-500'
-                  : 'border-blue-400 bg-blue-600 bg-opacity-30'
-              }`}
+              onTouchStart={handleLeftTouch}
+              className="flex-1 transition-all duration-100 flex items-center justify-center border-4 bg-green-700 border-white cursor-pointer"
             >
-              <div className="text-center pointer-events-none">
-                <div className="text-8xl mb-2">👈</div>
-                <div className="text-white text-3xl font-bold">왼손</div>
-                <div className="text-white text-2xl mt-2 opacity-70">E</div>
-              </div>
+              {trainingRange === 'left' && (
+                <div className="text-white text-9xl pointer-events-none">
+                  {bodyPart === 'hand' ? '✋' : '🦶'}
+                  <div className="text-4xl mt-4">왼쪽</div>
+                </div>
+              )}
             </div>
+          )}
 
-            {/* 오른손 */}
-            <div
-              onTouchStart={handleQuadrantTouch('right-hand')}
-              className={`flex-1 flex items-center justify-center border-2 transition-all ${
-                isExpected('right-hand')
-                  ? 'border-yellow-300 border-4 bg-blue-400'
-                  : 'border-blue-300 bg-blue-500 bg-opacity-30'
-              }`}
-            >
-              <div className="text-center pointer-events-none">
-                <div className="text-8xl mb-2">👉</div>
-                <div className="text-white text-3xl font-bold">오른손</div>
-                <div className="text-white text-2xl mt-2 opacity-70">I</div>
+          {trainingRange === 'both' && (
+            <div className="flex flex-col items-center justify-center bg-gray-800 px-8 pointer-events-none">
+              <div className="text-white text-9xl mb-4">
+                {bodyPart === 'hand' ? '👐' : '👣'}
               </div>
+              <div className="text-white text-3xl">양쪽</div>
             </div>
-          </div>
+          )}
 
-          {/* 하단: 발 */}
-          <div className="flex-1 flex">
-            {/* 왼발 */}
+          {shouldShowRight && (
             <div
-              onTouchStart={handleQuadrantTouch('left-foot')}
-              className={`flex-1 flex items-center justify-center border-2 transition-all ${
-                isExpected('left-foot')
-                  ? 'border-yellow-300 border-4 bg-green-500'
-                  : 'border-green-400 bg-green-600 bg-opacity-30'
-              }`}
+              onTouchStart={handleRightTouch}
+              className="flex-1 transition-all duration-100 flex items-center justify-center border-4 bg-red-700 border-white cursor-pointer"
             >
-              <div className="text-center pointer-events-none">
-                <div className="text-8xl mb-2">🦵</div>
-                <div className="text-white text-3xl font-bold">왼발</div>
-                <div className="text-white text-2xl mt-2 opacity-70">X</div>
-              </div>
+              {trainingRange === 'right' && (
+                <div className="text-white text-9xl pointer-events-none">
+                  {bodyPart === 'hand' ? '🤚' : '🦶'}
+                  <div className="text-4xl mt-4">오른쪽</div>
+                </div>
+              )}
             </div>
-
-            {/* 오른발 */}
-            <div
-              onTouchStart={handleQuadrantTouch('right-foot')}
-              className={`flex-1 flex items-center justify-center border-2 transition-all ${
-                isExpected('right-foot')
-                  ? 'border-yellow-300 border-4 bg-green-400'
-                  : 'border-green-300 bg-green-500 bg-opacity-30'
-              }`}
-            >
-              <div className="text-center pointer-events-none">
-                <div className="text-8xl mb-2">🦵</div>
-                <div className="text-white text-3xl font-bold">오른발</div>
-                <div className="text-white text-2xl mt-2 opacity-70">N</div>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     );
