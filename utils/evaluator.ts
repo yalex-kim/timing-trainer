@@ -367,62 +367,74 @@ export class TimingEvaluator {
 }
 
 // ============================================================================
-// 입력 매핑 유틸리티
+// 입력 매핑 유틸리티 (Deprecated - use InputDeviceMapper from config)
 // ============================================================================
 
+/**
+ * @deprecated 이 클래스는 하위 호환성을 위해 유지됩니다.
+ * 새 코드에서는 config/inputMapping.ts의 InputDeviceMapper를 사용하세요.
+ */
 export class InputMapper {
   /**
    * 키보드 키를 InputType으로 변환
+   * @deprecated Use InputDeviceMapper.fromKeyboard() instead
    */
   static keyToInputType(key: string): InputType | null {
-    const keyLower = key.toLowerCase();
-
-    // 왼손
-    if (['a', 'q'].includes(keyLower)) return 'left-hand';
-    // 오른손
-    if (['d', 'e'].includes(keyLower)) return 'right-hand';
-    // 왼발
-    if (['z', 'x'].includes(keyLower)) return 'left-foot';
-    // 오른발
-    if (['c', 'v'].includes(keyLower)) return 'right-foot';
-
-    return null;
+    // config/inputMapping.ts에서 임포트하도록 변경 권장
+    // 임시로 하드코딩 유지 (하위 호환성)
+    const mapping: Record<string, InputType> = {
+      'e': 'left-hand',
+      'E': 'left-hand',
+      'i': 'right-hand',
+      'I': 'right-hand',
+      'x': 'left-foot',
+      'X': 'left-foot',
+      'n': 'right-foot',
+      'N': 'right-foot',
+    };
+    return mapping[key] || null;
   }
 
   /**
-   * MIDI 노트를 InputType으로 변환 (예시)
+   * MIDI 노트를 InputType으로 변환
+   * @deprecated Use InputDeviceMapper.fromMIDI() instead
    */
   static midiNoteToInputType(note: number): InputType | null {
-    // MIDI 노트 번호에 따라 매핑 (커스터마이징 가능)
-    if (note === 60) return 'left-hand';  // C4
-    if (note === 62) return 'right-hand'; // D4
-    if (note === 64) return 'left-foot';  // E4
-    if (note === 65) return 'right-foot'; // F4
-    return null;
+    const mapping: Record<number, InputType> = {
+      60: 'left-hand',
+      62: 'right-hand',
+      64: 'left-foot',
+      65: 'right-foot',
+    };
+    return mapping[note] || null;
   }
 
   /**
-   * USB HID 버튼을 InputType으로 변환 (예시)
+   * USB HID 버튼을 InputType으로 변환
+   * @deprecated Use InputDeviceMapper.fromHID() instead
    */
   static hidButtonToInputType(buttonId: number): InputType | null {
-    // 버튼 ID에 따라 매핑 (실제 디바이스에 맞게 조정)
-    if (buttonId === 0) return 'left-hand';
-    if (buttonId === 1) return 'right-hand';
-    if (buttonId === 2) return 'left-foot';
-    if (buttonId === 3) return 'right-foot';
-    return null;
+    const mapping: Record<number, InputType> = {
+      0: 'left-hand',
+      1: 'right-hand',
+      2: 'left-foot',
+      3: 'right-foot',
+    };
+    return mapping[buttonId] || null;
   }
 
   /**
-   * Gamepad 버튼을 InputType으로 변환 (예시)
+   * Gamepad 버튼을 InputType으로 변환
+   * @deprecated Use InputDeviceMapper.fromGamepad() instead
    */
   static gamepadButtonToInputType(buttonIndex: number): InputType | null {
-    // 게임패드 버튼에 따라 매핑
-    if (buttonIndex === 0) return 'left-hand';  // A 버튼
-    if (buttonIndex === 1) return 'right-hand'; // B 버튼
-    if (buttonIndex === 2) return 'left-foot';  // X 버튼
-    if (buttonIndex === 3) return 'right-foot'; // Y 버튼
-    return null;
+    const mapping: Record<number, InputType> = {
+      0: 'left-hand',
+      1: 'right-hand',
+      2: 'left-foot',
+      3: 'right-foot',
+    };
+    return mapping[buttonIndex] || null;
   }
 }
 

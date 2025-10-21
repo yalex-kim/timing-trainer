@@ -171,51 +171,71 @@ export function ProgressIndicator({
 // 현재 예상 입력 표시 컴포넌트
 // ============================================================================
 
+import { InputType } from '@/types/evaluation';
+import { KEYBOARD_LABELS } from '@/config/inputMapping';
+
 interface ExpectedInputDisplayProps {
-  expectedInputs: string[];
-  nextInputs?: string[];
+  expectedInputs: InputType[];
+  nextInputs?: InputType[];
 }
 
 export function ExpectedInputDisplay({
   expectedInputs,
   nextInputs,
 }: ExpectedInputDisplayProps) {
-  const getInputEmoji = (input: string) => {
-    if (input.includes('left-hand')) return '👈 왼손';
-    if (input.includes('right-hand')) return '👉 오른손';
-    if (input.includes('left-foot')) return '🦵 왼발';
-    if (input.includes('right-foot')) return '🦵 오른발';
-    return input;
+  const getInputDisplay = (input: InputType) => {
+    const displays = {
+      'left-hand': { emoji: '👈', label: '왼손', color: 'text-blue-400' },
+      'right-hand': { emoji: '👉', label: '오른손', color: 'text-blue-500' },
+      'left-foot': { emoji: '🦵', label: '왼발', color: 'text-green-400' },
+      'right-foot': { emoji: '🦵', label: '오른발', color: 'text-green-500' },
+    };
+    return displays[input];
   };
 
   return (
     <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-40">
-      <div className="bg-black bg-opacity-80 px-8 py-6 rounded-2xl">
+      <div className="bg-black bg-opacity-90 px-8 py-6 rounded-2xl border-2 border-yellow-400 border-opacity-50">
         {/* 현재 예상 입력 */}
         <div className="text-center mb-4">
-          <div className="text-lg text-gray-300 mb-2">다음 입력</div>
-          <div className="flex items-center justify-center gap-4">
-            {expectedInputs.map((input, index) => (
-              <div
-                key={index}
-                className="text-4xl font-bold text-yellow-400 animate-pulse"
-              >
-                {getInputEmoji(input)}
-              </div>
-            ))}
+          <div className="text-lg text-gray-300 mb-3">다음 입력</div>
+          <div className="flex items-center justify-center gap-6">
+            {expectedInputs.map((input, index) => {
+              const display = getInputDisplay(input);
+              return (
+                <div key={index} className="text-center animate-pulse">
+                  <div className={`text-5xl mb-2 ${display.color}`}>
+                    {display.emoji}
+                  </div>
+                  <div className="text-white text-xl font-bold mb-1">
+                    {display.label}
+                  </div>
+                  <div className="bg-yellow-400 text-black font-bold text-2xl px-4 py-2 rounded-lg shadow-lg">
+                    {KEYBOARD_LABELS[input]}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
         {/* 다다음 입력 (미리보기) */}
         {nextInputs && nextInputs.length > 0 && (
-          <div className="text-center">
-            <div className="text-sm text-gray-400 mb-1">다다음</div>
-            <div className="flex items-center justify-center gap-2">
-              {nextInputs.map((input, index) => (
-                <div key={index} className="text-2xl text-gray-500">
-                  {getInputEmoji(input)}
-                </div>
-              ))}
+          <div className="text-center pt-4 border-t border-gray-600">
+            <div className="text-sm text-gray-400 mb-2">다다음</div>
+            <div className="flex items-center justify-center gap-4">
+              {nextInputs.map((input, index) => {
+                const display = getInputDisplay(input);
+                return (
+                  <div key={index} className="text-center opacity-60">
+                    <div className="text-2xl mb-1">{display.emoji}</div>
+                    <div className="text-white text-xs">{display.label}</div>
+                    <div className="bg-gray-600 text-white text-sm px-2 py-1 rounded mt-1">
+                      {KEYBOARD_LABELS[input]}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

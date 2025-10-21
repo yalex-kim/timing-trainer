@@ -5,7 +5,7 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { InputType, InputEvent } from '@/types/evaluation';
-import { InputMapper } from '@/utils/evaluator';
+import { InputDeviceMapper } from '@/config/inputMapping';
 
 interface UseInputHandlerProps {
   onInput: (inputEvent: InputEvent) => void;
@@ -42,7 +42,7 @@ export function useInputHandler({
       // 중복 입력 방지
       if (event.repeat) return;
 
-      const inputType = InputMapper.keyToInputType(event.key);
+      const inputType = InputDeviceMapper.fromKeyboard(event.key);
       if (!inputType) return;
 
       const inputEvent: InputEvent = {
@@ -93,7 +93,7 @@ export function useInputHandler({
 
             // Note On 메시지만 처리 (144-159)
             if (status >= 144 && status <= 159 && velocity > 0) {
-              const inputType = InputMapper.midiNoteToInputType(note);
+              const inputType = InputDeviceMapper.fromMIDI(note);
               if (!inputType) return;
 
               const inputEvent: InputEvent = {
@@ -166,7 +166,7 @@ export function useInputHandler({
           // 각 비트가 버튼을 나타낸다고 가정
           for (let i = 0; i < 8; i++) {
             if (buttonByte & (1 << i)) {
-              const inputType = InputMapper.hidButtonToInputType(i);
+              const inputType = InputDeviceMapper.fromHID(i);
               if (!inputType) continue;
 
               const inputEvent: InputEvent = {
@@ -215,7 +215,7 @@ export function useInputHandler({
 
           // 버튼이 눌렸을 때만 (상승 에지)
           if (isPressed && !wasPressed) {
-            const inputType = InputMapper.gamepadButtonToInputType(buttonIndex);
+            const inputType = InputDeviceMapper.fromGamepad(buttonIndex);
             if (!inputType) return;
 
             const inputEvent: InputEvent = {
