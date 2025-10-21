@@ -22,8 +22,9 @@ export default function SessionResults({
   const classInfo = getClassInfo(results.classLevel);
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-gray-900 to-black flex items-center justify-center z-50 p-8 overflow-y-auto">
-      <div className="max-w-6xl w-full bg-gray-800 rounded-2xl shadow-2xl p-8">
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-900 to-black z-50 overflow-y-auto">
+      <div className="min-h-screen flex items-start justify-center p-4 sm:p-8">
+        <div className="max-w-6xl w-full bg-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8 my-8">
         <h1 className="text-5xl font-bold text-white text-center mb-8">
           훈련 결과
         </h1>
@@ -270,6 +271,7 @@ export default function SessionResults({
           >
             메인으로
           </button>
+        </div>
         </div>
       </div>
     </div>
