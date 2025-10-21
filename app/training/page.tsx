@@ -16,7 +16,6 @@ import { useInputHandler } from '@/hooks/useInputHandler';
 import TimingFeedback from '@/components/TimingFeedback';
 import SessionResults from '@/components/SessionResults';
 import { ExpectedInputDisplay } from '@/components/TimingFeedback';
-import { CompactTouchButtons, isMobileDevice } from '@/components/TouchInputButtons';
 
 function TrainingContent() {
   const router = useRouter();
@@ -43,17 +42,15 @@ function TrainingContent() {
   const [currentSide, setCurrentSide] = useState<'left' | 'right'>('left');
   const [isActive, setIsActive] = useState(false);
 
-  // 모바일 감지
-  const [isMobile, setIsMobile] = useState(false);
-
   const intervalMs = 60000 / bpm;
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
   const startTimeRef = useRef<number>(0);
+  const sessionRef = useRef<TrainingSession | null>(null);
 
-  // 모바일 감지
+  // sessionRef 동기화
   useEffect(() => {
-    setIsMobile(isMobileDevice());
-  }, []);
+    sessionRef.current = session;
+  }, [session]);
 
   // 오디오 비프음
   const playBeep = useCallback(() => {
@@ -116,43 +113,47 @@ function TrainingContent() {
 
   // 입력 처리
   const handleInput = useCallback((inputEvent: InputEvent) => {
-    if (!session || !isRunning) return;
-
-    const currentBeatData = session.beats[currentBeat];
-    if (!currentBeatData) return;
-
-    // 타이밍 평가
-    const { feedback, isCorrectInput } = TimingEvaluator.evaluateBeat(
-      currentBeatData.expectedTime,
-      inputEvent.timestamp,
-      inputEvent.type,
-      currentBeatData.expectedInput
-    );
-
-    // 비트 데이터 업데이트
-    const updatedBeat: BeatData = {
-      ...currentBeatData,
-      actualInput: inputEvent,
-      actualTime: inputEvent.timestamp,
-      deviation: feedback.deviation,
-      isCorrectInput,
-      isWrongInput: !isCorrectInput,
-      feedback,
-    };
+    const currentSession = sessionRef.current;
+    if (!currentSession) return;
 
     setSession((prev) => {
       if (!prev) return prev;
+
+      const beatIndex = currentBeat;
+      const currentBeatData = prev.beats[beatIndex];
+      if (!currentBeatData) return prev;
+
+      // 타이밍 평가
+      const { feedback, isCorrectInput } = TimingEvaluator.evaluateBeat(
+        currentBeatData.expectedTime,
+        inputEvent.timestamp,
+        inputEvent.type,
+        currentBeatData.expectedInput
+      );
+
+      // 비트 데이터 업데이트
+      const updatedBeat: BeatData = {
+        ...currentBeatData,
+        actualInput: inputEvent,
+        actualTime: inputEvent.timestamp,
+        deviation: feedback.deviation,
+        isCorrectInput,
+        isWrongInput: !isCorrectInput,
+        feedback,
+      };
+
       const newBeats = [...prev.beats];
-      newBeats[currentBeat] = updatedBeat;
+      newBeats[beatIndex] = updatedBeat;
+
+      // 피드백 표시 (1초간)
+      setCurrentFeedback(feedback);
+      setTimeout(() => setCurrentFeedback(null), 1000);
+
+      console.log(`Beat ${beatIndex}: ${feedback.category} (${feedback.displayText})`, updatedBeat);
+
       return { ...prev, beats: newBeats };
     });
-
-    // 피드백 표시 (1초간)
-    setCurrentFeedback(feedback);
-    setTimeout(() => setCurrentFeedback(null), 1000);
-
-    console.log(`Beat ${currentBeat}: ${feedback.category} (${feedback.displayText})`);
-  }, [session, currentBeat, isRunning]);
+  }, [currentBeat]);
 
   // 입력 핸들러 등록 (키보드)
   useInputHandler({
@@ -243,11 +244,14 @@ function TrainingContent() {
   }, [router]);
 
   // 세션 종료
-  const finishSession = () => {
-    if (!session) return;
+  const finishSession = useCallback(() => {
+    const currentSession = sessionRef.current;
+    if (!currentSession) return;
 
     setIsRunning(false);
-    const results = TimingEvaluator.evaluateSession(session.beats);
+
+    // 최신 세션 데이터로 평가
+    const results = TimingEvaluator.evaluateSession(currentSession.beats);
 
     setSession((prev) => {
       if (!prev) return prev;
@@ -257,7 +261,9 @@ function TrainingContent() {
     setShowResults(true);
 
     console.log('Session finished:', results);
-  };
+    console.log('Total beats:', currentSession.beats.length);
+    console.log('Beats with input:', currentSession.beats.filter(b => b.actualInput !== null).length);
+  }, []);
 
   // 시간 포맷팅
   const formatTime = (seconds: number) => {
@@ -296,6 +302,19 @@ function TrainingContent() {
     const leftActive = isActive && (trainingRange === 'left' || (trainingRange === 'both' && currentSide === 'left'));
     const rightActive = isActive && (trainingRange === 'right' || (trainingRange === 'both' && currentSide === 'right'));
 
+    // 터치 핸들러
+    const handleLeftTouch = (e: React.TouchEvent) => {
+      e.preventDefault();
+      const inputType = bodyPart === 'hand' ? 'left-hand' : 'left-foot';
+      handleTouchInput(inputType as InputType);
+    };
+
+    const handleRightTouch = (e: React.TouchEvent) => {
+      e.preventDefault();
+      const inputType = bodyPart === 'hand' ? 'right-hand' : 'right-foot';
+      handleTouchInput(inputType as InputType);
+    };
+
     return (
       <div className="fixed inset-0 bg-black">
         {/* 상단 정보 */}
@@ -322,33 +341,25 @@ function TrainingContent() {
           />
         )}
 
-        {/* 예상 입력 표시 (키보드만) */}
-        {!isMobile && currentBeatData && (
+        {/* 예상 입력 표시 */}
+        {currentBeatData && (
           <ExpectedInputDisplay
             expectedInputs={currentBeatData.expectedInput.expectedTypes}
             nextInputs={nextBeatData?.expectedInput.expectedTypes}
           />
         )}
 
-        {/* 터치 버튼 (모바일) */}
-        {isMobile && currentBeatData && (
-          <CompactTouchButtons
-            onTouch={handleTouchInput}
-            expectedInputs={currentBeatData.expectedInput.expectedTypes}
-            disabled={!isRunning}
-          />
-        )}
-
-        {/* 시각 영역 */}
+        {/* 시각 영역 (터치 가능) */}
         <div className="h-full flex">
           {shouldShowLeft && (
             <div
-              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 ${
+              onTouchStart={handleLeftTouch}
+              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 cursor-pointer ${
                 leftActive ? 'bg-green-400 border-yellow-300' : 'bg-green-700 border-white'
               }`}
             >
               {trainingRange === 'left' && (
-                <div className="text-white text-9xl">
+                <div className="text-white text-9xl pointer-events-none">
                   {bodyPart === 'hand' ? '✋' : '🦶'}
                   <div className="text-4xl mt-4">왼쪽</div>
                 </div>
@@ -357,7 +368,7 @@ function TrainingContent() {
           )}
 
           {trainingRange === 'both' && (
-            <div className="flex flex-col items-center justify-center bg-gray-800 px-8">
+            <div className="flex flex-col items-center justify-center bg-gray-800 px-8 pointer-events-none">
               <div className="text-white text-9xl mb-4">
                 {bodyPart === 'hand' ? '👐' : '👣'}
               </div>
@@ -367,12 +378,13 @@ function TrainingContent() {
 
           {shouldShowRight && (
             <div
-              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 ${
+              onTouchStart={handleRightTouch}
+              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 cursor-pointer ${
                 rightActive ? 'bg-red-400 border-yellow-300' : 'bg-red-700 border-white'
               }`}
             >
               {trainingRange === 'right' && (
-                <div className="text-white text-9xl">
+                <div className="text-white text-9xl pointer-events-none">
                   {bodyPart === 'hand' ? '🤚' : '🦶'}
                   <div className="text-4xl mt-4">오른쪽</div>
                 </div>
@@ -386,8 +398,18 @@ function TrainingContent() {
 
   // 청각 훈련 모드
   if (trainingType === 'audio') {
+    // 터치 핸들러 (4분할)
+    const handleQuadrantTouch = (inputType: InputType) => (e: React.TouchEvent) => {
+      e.preventDefault();
+      handleTouchInput(inputType);
+    };
+
+    const isExpected = (inputType: InputType) => {
+      return currentBeatData?.expectedInput.expectedTypes.includes(inputType);
+    };
+
     return (
-      <div className="fixed inset-0 bg-gradient-to-br from-blue-900 to-purple-900 flex flex-col items-center justify-center">
+      <div className="fixed inset-0 bg-gradient-to-br from-blue-900 to-purple-900">
         {/* 상단 정보 */}
         <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
           <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
@@ -412,30 +434,84 @@ function TrainingContent() {
           />
         )}
 
-        {/* 예상 입력 표시 (키보드만) */}
-        {!isMobile && currentBeatData && (
+        {/* 예상 입력 표시 */}
+        {currentBeatData && (
           <ExpectedInputDisplay
             expectedInputs={currentBeatData.expectedInput.expectedTypes}
             nextInputs={nextBeatData?.expectedInput.expectedTypes}
           />
         )}
 
-        {/* 터치 버튼 (모바일) */}
-        {isMobile && currentBeatData && (
-          <CompactTouchButtons
-            onTouch={handleTouchInput}
-            expectedInputs={currentBeatData.expectedInput.expectedTypes}
-            disabled={!isRunning}
-          />
-        )}
+        {/* 4분할 터치 영역 */}
+        <div className="h-full flex flex-col">
+          {/* 상단: 손 */}
+          <div className="flex-1 flex">
+            {/* 왼손 */}
+            <div
+              onTouchStart={handleQuadrantTouch('left-hand')}
+              className={`flex-1 flex items-center justify-center border-2 transition-all ${
+                isExpected('left-hand')
+                  ? 'border-yellow-300 border-4 bg-blue-500'
+                  : 'border-blue-400 bg-blue-600 bg-opacity-30'
+              }`}
+            >
+              <div className="text-center pointer-events-none">
+                <div className="text-8xl mb-2">👈</div>
+                <div className="text-white text-3xl font-bold">왼손</div>
+                <div className="text-white text-2xl mt-2 opacity-70">E</div>
+              </div>
+            </div>
 
-        {/* 청각 모드 메인 */}
-        <div className="text-center">
-          <div className="text-white text-9xl mb-8">🔊</div>
-          <h1 className="text-white text-5xl font-bold mb-4">청각 훈련 모드</h1>
-          <p className="text-white text-2xl opacity-80">소리에 맞춰 키를 누르세요</p>
-          <div className="mt-8 text-white text-3xl">
-            {bodyPart === 'hand' ? '손' : '발'} - {trainingRange === 'left' ? '왼쪽' : trainingRange === 'right' ? '오른쪽' : '양쪽'}
+            {/* 오른손 */}
+            <div
+              onTouchStart={handleQuadrantTouch('right-hand')}
+              className={`flex-1 flex items-center justify-center border-2 transition-all ${
+                isExpected('right-hand')
+                  ? 'border-yellow-300 border-4 bg-blue-400'
+                  : 'border-blue-300 bg-blue-500 bg-opacity-30'
+              }`}
+            >
+              <div className="text-center pointer-events-none">
+                <div className="text-8xl mb-2">👉</div>
+                <div className="text-white text-3xl font-bold">오른손</div>
+                <div className="text-white text-2xl mt-2 opacity-70">I</div>
+              </div>
+            </div>
+          </div>
+
+          {/* 하단: 발 */}
+          <div className="flex-1 flex">
+            {/* 왼발 */}
+            <div
+              onTouchStart={handleQuadrantTouch('left-foot')}
+              className={`flex-1 flex items-center justify-center border-2 transition-all ${
+                isExpected('left-foot')
+                  ? 'border-yellow-300 border-4 bg-green-500'
+                  : 'border-green-400 bg-green-600 bg-opacity-30'
+              }`}
+            >
+              <div className="text-center pointer-events-none">
+                <div className="text-8xl mb-2">🦵</div>
+                <div className="text-white text-3xl font-bold">왼발</div>
+                <div className="text-white text-2xl mt-2 opacity-70">X</div>
+              </div>
+            </div>
+
+            {/* 오른발 */}
+            <div
+              onTouchStart={handleQuadrantTouch('right-foot')}
+              className={`flex-1 flex items-center justify-center border-2 transition-all ${
+                isExpected('right-foot')
+                  ? 'border-yellow-300 border-4 bg-green-400'
+                  : 'border-green-300 bg-green-500 bg-opacity-30'
+              }`}
+            >
+              <div className="text-center pointer-events-none">
+                <div className="text-8xl mb-2">🦵</div>
+                <div className="text-white text-3xl font-bold">오른발</div>
+                <div className="text-white text-2xl mt-2 opacity-70">N</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
