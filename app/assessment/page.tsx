@@ -143,7 +143,7 @@ function AssessmentContent() {
     } else if (phase === 'countdown' && countdown === 0) {
       startTest();
     }
-  }, [phase, countdown]);
+  }, [phase, countdown, startTest]);
 
   // 검사 시작
   const startTest = useCallback(() => {
@@ -169,8 +169,8 @@ function AssessmentContent() {
     }
 
     const newSession: TrainingSession = {
-      sessionId: `assessment-${currentTestIndex}-${Date.now()}`,
-      sessionNumber: currentTestIndex,
+      sessionId: `assessment-${currentTestIndexRef.current}-${Date.now()}`,
+      sessionNumber: currentTestIndexRef.current,
       date: new Date().toISOString(),
       startTime: Date.now(),
       userProfile,
@@ -190,7 +190,7 @@ function AssessmentContent() {
     setIsRunning(true);
     setPhase('testing');
     setTimeRemaining(DURATION_SECONDS);
-  }, [userProfile, currentTest, currentTestIndex, totalBeats, intervalMs]);
+  }, [userProfile, currentTest, totalBeats, intervalMs]);
 
   // 입력 처리
   const handleInput = useCallback((inputEvent: InputEvent) => {
@@ -318,7 +318,7 @@ function AssessmentContent() {
     }, intervalMs);
 
     return () => clearInterval(beatTimer);
-  }, [isRunning, phase, intervalMs, totalBeats, currentTest, playBeep, finishTest]);
+  }, [isRunning, phase, intervalMs, totalBeats, currentTest, playBeep]);
 
   // 타이머
   useEffect(() => {
