@@ -305,14 +305,14 @@ function AssessmentContent() {
         if (prev + 1 >= totalBeats) {
           clearInterval(beatTimer);
           setTimeout(() => finishTest(), 500);
-          return prev;
+          return prev + 1; // 마지막 비트까지 카운트
         }
         return prev + 1;
       });
     }, intervalMs);
 
     return () => clearInterval(beatTimer);
-  }, [isRunning, phase, intervalMs, totalBeats, currentTest, playBeep]);
+  }, [isRunning, phase, intervalMs, totalBeats, currentTest, playBeep, finishTest]);
 
   // 타이머
   useEffect(() => {
