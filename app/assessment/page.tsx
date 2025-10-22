@@ -73,8 +73,14 @@ function AssessmentContent() {
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const currentTestIndexRef = useRef<number>(0);
 
   const currentTest = ASSESSMENT_SEQUENCE[currentTestIndex];
+
+  // Refs 동기화
+  useEffect(() => {
+    currentTestIndexRef.current = currentTestIndex;
+  }, [currentTestIndex]);
 
   // sessionRef 동기화
   useEffect(() => {
@@ -348,12 +354,12 @@ function AssessmentContent() {
     setSession(null);
 
     // 다음 검사가 있으면 대기 상태, 없으면 완료
-    if (currentTestIndex < ASSESSMENT_SEQUENCE.length - 1) {
+    if (currentTestIndexRef.current < ASSESSMENT_SEQUENCE.length - 1) {
       setPhase('waiting');
     } else {
       setPhase('complete');
     }
-  }, [currentTestIndex]);
+  }, []);
 
   // 다음 검사로 진행
   const handleNextTest = useCallback(() => {
