@@ -15,7 +15,62 @@ import {
   TimingClass,
   CLASS_DEFINITIONS,
   FEEDBACK_THRESHOLDS,
+  AGE_BASED_STANDARDS,
+  AgeGroup,
+  UserProfile,
 } from '@/types/evaluation';
+
+// ============================================================================
+// 연령대 및 Class 결정 헬퍼 함수
+// ============================================================================
+
+/**
+ * 생년월일로부터 나이 계산
+ */
+export function calculateAge(birthDate: string): number {
+  const today = new Date();
+  const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+
+  return age;
+}
+
+/**
+ * 나이를 연령대 그룹으로 변환
+ */
+export function getAgeGroup(age: number): AgeGroup {
+  if (age <= 7) return 'under7';
+  if (age <= 9) return '8-9';
+  if (age <= 11) return '10-11';
+  if (age <= 13) return '12-13';
+  if (age <= 16) return '14-16';
+  return 'over17';
+}
+
+/**
+ * 연령과 모드에 따른 Class 결정 (QTrainer 표준 규준표 기반)
+ */
+export function determineClassByAge(
+  taskAverage: number,
+  age: number,
+  mode: 'visual' | 'audio'
+): TimingClass {
+  const ageGroup = getAgeGroup(age);
+  const standards = AGE_BASED_STANDARDS[mode][ageGroup];
+
+  for (const standard of standards) {
+    if (taskAverage >= standard.range[0] && taskAverage < standard.range[1]) {
+      return standard.class;
+    }
+  }
+
+  return 1; // 기본값: 극심한 결핍
+}
 
 // ============================================================================
 // 훈련 패턴별 예상 입력 생성
@@ -246,7 +301,11 @@ export class TimingEvaluator {
   /**
    * 세션 전체 평가
    */
-  static evaluateSession(beats: BeatData[]): SessionResults {
+  static evaluateSession(
+    beats: BeatData[],
+    userAge: number,
+    trainingMode: 'visual' | 'audio'
+  ): SessionResults {
     const validBeats = beats.filter((b) => b.actualTime !== null);
     const correctInputBeats = validBeats.filter((b) => b.isCorrectInput);
     const wrongInputBeats = validBeats.filter((b) => b.isWrongInput);
@@ -258,8 +317,8 @@ export class TimingEvaluator {
         ? deviations.reduce((a, b) => a + b, 0) / deviations.length
         : 999;
 
-    // Class 결정
-    const classLevel = this.determineClass(taskAverage);
+    // Class 결정 (연령 및 모드 기반)
+    const classLevel = determineClassByAge(taskAverage, userAge, trainingMode);
 
     // Early/Late/OnTarget 분포
     const earlyCount = correctInputBeats.filter((b) => b.deviation! < -5).length;

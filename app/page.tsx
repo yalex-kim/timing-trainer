@@ -1,14 +1,67 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TrainingSettings, DEFAULT_SETTINGS } from '@/types';
+import { UserProfile } from '@/types/evaluation';
+import { calculateAge } from '@/utils/evaluator';
 
 export default function Home() {
   const router = useRouter();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [showUserForm, setShowUserForm] = useState(false);
   const [settings, setSettings] = useState<TrainingSettings>(DEFAULT_SETTINGS);
 
+  // 폼 입력 상태
+  const [formData, setFormData] = useState({
+    name: '',
+    birthDate: '',
+    gender: 'male' as 'male' | 'female' | 'other',
+  });
+
+  // LocalStorage에서 사용자 정보 로드
+  useEffect(() => {
+    const stored = localStorage.getItem('userProfile');
+    if (stored) {
+      const profile = JSON.parse(stored) as UserProfile;
+      profile.age = calculateAge(profile.birthDate);
+      setUserProfile(profile);
+    } else {
+      setShowUserForm(true);
+    }
+  }, []);
+
+  // 사용자 정보 저장
+  const handleUserFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const profile: UserProfile = {
+      ...formData,
+      age: calculateAge(formData.birthDate),
+    };
+    localStorage.setItem('userProfile', JSON.stringify(profile));
+    setUserProfile(profile);
+    setShowUserForm(false);
+  };
+
+  // 사용자 정보 수정
+  const handleEditUser = () => {
+    if (userProfile) {
+      setFormData({
+        name: userProfile.name,
+        birthDate: userProfile.birthDate,
+        gender: userProfile.gender,
+      });
+    }
+    setShowUserForm(true);
+  };
+
+  // 훈련 시작
   const handleStart = () => {
+    if (!userProfile) {
+      alert('사용자 정보를 먼저 입력해주세요.');
+      return;
+    }
+
     const params = new URLSearchParams({
       trainingType: settings.trainingType,
       bodyPart: settings.bodyPart,
@@ -19,9 +72,133 @@ export default function Home() {
     router.push(`/training?${params.toString()}`);
   };
 
+  // 사용자 정보 입력 화면
+  if (showUserForm) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
+        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+          <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
+            사용자 정보 입력
+          </h1>
+
+          <form onSubmit={handleUserFormSubmit} className="space-y-6">
+            {/* 이름 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                이름
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="홍길동"
+              />
+            </div>
+
+            {/* 생년월일 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                생년월일
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.birthDate}
+                onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* 성별 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                성별
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, gender: 'male' })}
+                  className={`py-3 px-4 rounded-lg font-medium transition-colors ${
+                    formData.gender === 'male'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  남성
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, gender: 'female' })}
+                  className={`py-3 px-4 rounded-lg font-medium transition-colors ${
+                    formData.gender === 'female'
+                      ? 'bg-pink-500 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  여성
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, gender: 'other' })}
+                  className={`py-3 px-4 rounded-lg font-medium transition-colors ${
+                    formData.gender === 'other'
+                      ? 'bg-purple-500 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  기타
+                </button>
+              </div>
+            </div>
+
+            {/* 제출 버튼 */}
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-4 px-6 rounded-lg font-bold text-lg hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl"
+            >
+              {userProfile ? '정보 수정 완료' : '다음 단계로'}
+            </button>
+
+            {userProfile && (
+              <button
+                type="button"
+                onClick={() => setShowUserForm(false)}
+                className="w-full bg-gray-300 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-400 transition-all"
+              >
+                취소
+              </button>
+            )}
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 훈련 설정 화면
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+        {/* 사용자 정보 표시 */}
+        {userProfile && (
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex justify-between items-center">
+              <div>
+                <div className="text-sm text-gray-600">훈련자</div>
+                <div className="text-lg font-bold text-gray-800">{userProfile.name}</div>
+                <div className="text-sm text-gray-600">만 {userProfile.age}세</div>
+              </div>
+              <button
+                onClick={handleEditUser}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                수정
+              </button>
+            </div>
+          </div>
+        )}
+
         <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
           타이밍 훈련 프로그램
         </h1>

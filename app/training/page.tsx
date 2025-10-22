@@ -10,8 +10,9 @@ import {
   TrainingSession,
   SessionResults as SessionResultsType,
   TimingFeedback as TimingFeedbackType,
+  UserProfile,
 } from '@/types/evaluation';
-import { PatternGenerator, TimingEvaluator } from '@/utils/evaluator';
+import { PatternGenerator, TimingEvaluator, calculateAge } from '@/utils/evaluator';
 import { useInputHandler } from '@/hooks/useInputHandler';
 import TimingFeedback from '@/components/TimingFeedback';
 import SessionResults from '@/components/SessionResults';
@@ -42,6 +43,9 @@ function TrainingContent() {
   const [currentSide, setCurrentSide] = useState<'left' | 'right'>('left');
   const [isActive, setIsActive] = useState(false);
 
+  // 사용자 프로필 로드
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
   const intervalMs = 60000 / bpm;
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
   const startTimeRef = useRef<number>(0);
@@ -64,6 +68,20 @@ function TrainingContent() {
       }
     };
   }, []);
+
+  // 사용자 프로필 로드
+  useEffect(() => {
+    const stored = localStorage.getItem('userProfile');
+    if (stored) {
+      const profile = JSON.parse(stored) as UserProfile;
+      profile.age = calculateAge(profile.birthDate);
+      setUserProfile(profile);
+    } else {
+      // 사용자 정보가 없으면 메인으로 리다이렉트
+      alert('사용자 정보를 먼저 입력해주세요.');
+      router.push('/');
+    }
+  }, [router]);
 
   // 오디오 비프음
   const playBeep = useCallback(() => {
@@ -88,6 +106,8 @@ function TrainingContent() {
 
   // 세션 초기화
   useEffect(() => {
+    if (!userProfile) return; // 사용자 프로필 로드 대기
+
     startTimeRef.current = performance.now();
     const beats: BeatData[] = [];
 
@@ -111,6 +131,7 @@ function TrainingContent() {
       sessionNumber: 0,
       date: new Date().toISOString(),
       startTime: Date.now(),
+      userProfile,
       settings: {
         trainingType,
         bodyPart,
@@ -124,7 +145,7 @@ function TrainingContent() {
 
     setSession(newSession);
     setIsRunning(true);
-  }, [totalBeats, pattern, intervalMs, trainingType, bodyPart, trainingRange, bpm, duration]);
+  }, [totalBeats, pattern, intervalMs, trainingType, bodyPart, trainingRange, bpm, duration, userProfile]);
 
   // 입력 처리
   const handleInput = useCallback((inputEvent: InputEvent) => {
@@ -311,8 +332,12 @@ function TrainingContent() {
 
     setIsRunning(false);
 
-    // 최신 세션 데이터로 평가
-    const results = TimingEvaluator.evaluateSession(currentSession.beats);
+    // 최신 세션 데이터로 평가 (나이와 모드 기반)
+    const results = TimingEvaluator.evaluateSession(
+      currentSession.beats,
+      currentSession.userProfile.age!,
+      currentSession.settings.trainingType
+    );
 
     setSession((prev) => {
       if (!prev) return prev;
@@ -322,6 +347,8 @@ function TrainingContent() {
     setShowResults(true);
 
     console.log('Session finished:', results);
+    console.log('User age:', currentSession.userProfile.age);
+    console.log('Training mode:', currentSession.settings.trainingType);
     console.log('Total beats:', currentSession.beats.length);
     console.log('Beats with input:', currentSession.beats.filter(b => b.actualInput !== null).length);
   }, []);
