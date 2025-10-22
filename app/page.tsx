@@ -10,6 +10,7 @@ export default function Home() {
   const router = useRouter();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [showUserForm, setShowUserForm] = useState(false);
+  const [mode, setMode] = useState<'training' | 'assessment' | null>(null);
   const [settings, setSettings] = useState<TrainingSettings>(DEFAULT_SETTINGS);
 
   // 폼 입력 상태
@@ -55,21 +56,25 @@ export default function Home() {
     setShowUserForm(true);
   };
 
-  // 훈련 시작
+  // 훈련/검사 시작
   const handleStart = () => {
     if (!userProfile) {
       alert('사용자 정보를 먼저 입력해주세요.');
       return;
     }
 
-    const params = new URLSearchParams({
-      trainingType: settings.trainingType,
-      bodyPart: settings.bodyPart,
-      trainingRange: settings.trainingRange,
-      bpm: settings.bpm.toString(),
-      duration: settings.durationMinutes.toString(),
-    });
-    router.push(`/training?${params.toString()}`);
+    if (mode === 'assessment') {
+      router.push('/assessment');
+    } else {
+      const params = new URLSearchParams({
+        trainingType: settings.trainingType,
+        bodyPart: settings.bodyPart,
+        trainingRange: settings.trainingRange,
+        bpm: settings.bpm.toString(),
+        duration: settings.durationMinutes.toString(),
+      });
+      router.push(`/training?${params.toString()}`);
+    }
   };
 
   // 사용자 정보 입력 화면
@@ -204,6 +209,37 @@ export default function Home() {
         </h1>
 
         <div className="space-y-6">
+          {/* 모드 선택 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              모드 선택
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setMode('training')}
+                className={`py-4 px-4 rounded-lg font-bold text-lg transition-colors ${
+                  mode === 'training'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                훈련 모드
+              </button>
+              <button
+                onClick={() => setMode('assessment')}
+                className={`py-4 px-4 rounded-lg font-bold text-lg transition-colors ${
+                  mode === 'assessment'
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                검사 모드
+              </button>
+            </div>
+          </div>
+
+          {mode === 'training' && (
+            <>
           {/* 훈련 타입 선택 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -339,13 +375,35 @@ export default function Home() {
             </div>
           </div>
 
+            </>
+          )}
+
+          {/* 검사 모드 안내 */}
+          {mode === 'assessment' && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h3 className="font-bold text-green-800 mb-2">검사 모드</h3>
+              <ul className="text-sm text-green-700 space-y-1">
+                <li>• BPM: 60 (고정)</li>
+                <li>• 8가지 검사를 순서대로 진행합니다</li>
+                <li>• 왼손(청각) → 왼손(시각) → 오른손(청각) → 오른손(시각)</li>
+                <li>• 왼발(청각) → 왼발(시각) → 오른발(청각) → 오른발(시각)</li>
+              </ul>
+            </div>
+          )}
+
           {/* 시작 버튼 */}
-          <button
-            onClick={handleStart}
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-4 px-6 rounded-lg font-bold text-lg hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl"
-          >
-            훈련 시작
-          </button>
+          {mode && (
+            <button
+              onClick={handleStart}
+              className={`w-full text-white py-4 px-6 rounded-lg font-bold text-lg transition-all shadow-lg hover:shadow-xl ${
+                mode === 'training'
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
+                  : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+              }`}
+            >
+              {mode === 'training' ? '훈련 시작' : '검사 시작'}
+            </button>
+          )}
         </div>
       </div>
     </div>
