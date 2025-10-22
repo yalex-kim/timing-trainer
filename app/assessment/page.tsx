@@ -74,6 +74,7 @@ function AssessmentContent() {
   const sessionRef = useRef<TrainingSession | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentTestIndexRef = useRef<number>(0);
+  const startTestRef = useRef<(() => void) | null>(null);
 
   const currentTest = ASSESSMENT_SEQUENCE[currentTestIndex];
 
@@ -141,9 +142,9 @@ function AssessmentContent() {
       }, 1000);
       return () => clearTimeout(timer);
     } else if (phase === 'countdown' && countdown === 0) {
-      startTest();
+      startTestRef.current?.();
     }
-  }, [phase, countdown, startTest]);
+  }, [phase, countdown]);
 
   // 검사 시작
   const startTest = useCallback(() => {
@@ -191,6 +192,11 @@ function AssessmentContent() {
     setPhase('testing');
     setTimeRemaining(DURATION_SECONDS);
   }, [userProfile, currentTest, totalBeats, intervalMs]);
+
+  // startTest를 ref에 동기화
+  useEffect(() => {
+    startTestRef.current = startTest;
+  }, [startTest]);
 
   // 입력 처리
   const handleInput = useCallback((inputEvent: InputEvent) => {
