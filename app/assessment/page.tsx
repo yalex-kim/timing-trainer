@@ -75,6 +75,7 @@ function AssessmentContent() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentTestIndexRef = useRef<number>(0);
   const startTestRef = useRef<(() => void) | null>(null);
+  const finishTestRef = useRef<(() => void) | null>(null);
 
   const currentTest = ASSESSMENT_SEQUENCE[currentTestIndex];
 
@@ -316,7 +317,7 @@ function AssessmentContent() {
 
         if (prev + 1 >= totalBeats) {
           clearInterval(beatTimer);
-          setTimeout(() => finishTest(), 500);
+          setTimeout(() => finishTestRef.current?.(), 500);
           return prev + 1; // 마지막 비트까지 카운트
         }
         return prev + 1;
@@ -366,6 +367,11 @@ function AssessmentContent() {
       setPhase('complete');
     }
   }, []);
+
+  // finishTest를 ref에 동기화
+  useEffect(() => {
+    finishTestRef.current = finishTest;
+  }, [finishTest]);
 
   // 다음 검사로 진행
   const handleNextTest = useCallback(() => {
