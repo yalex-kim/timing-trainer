@@ -39,7 +39,7 @@ const ASSESSMENT_SEQUENCE: AssessmentTest[] = [
 ];
 
 const BPM = 60;
-const DURATION_MINUTES = 1;
+const DURATION_SECONDS = 40;
 
 type AssessmentPhase = 'ready' | 'countdown' | 'testing' | 'waiting' | 'complete';
 
@@ -59,7 +59,7 @@ function AssessmentContent() {
   const [currentBeat, setCurrentBeat] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState<TimingFeedbackType | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState(DURATION_MINUTES * 60);
+  const [timeRemaining, setTimeRemaining] = useState(DURATION_SECONDS);
 
   // 시각 훈련용 상태
   const [currentSide, setCurrentSide] = useState<'left' | 'right'>('left');
@@ -69,7 +69,7 @@ function AssessmentContent() {
   const [allResults, setAllResults] = useState<SessionResultsType[]>([]);
 
   const intervalMs = 60000 / BPM;
-  const totalBeats = Math.floor((DURATION_MINUTES * 60 * 1000) / intervalMs);
+  const totalBeats = Math.floor((DURATION_SECONDS * 1000) / intervalMs);
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -173,7 +173,7 @@ function AssessmentContent() {
         bodyPart: currentTest.bodyPart,
         trainingRange: currentTest.trainingRange,
         bpm: BPM,
-        durationMinutes: DURATION_MINUTES,
+        durationMinutes: DURATION_SECONDS / 60,
         pattern,
       },
       beats,
@@ -183,7 +183,7 @@ function AssessmentContent() {
     setCurrentBeat(0);
     setIsRunning(true);
     setPhase('testing');
-    setTimeRemaining(DURATION_MINUTES * 60);
+    setTimeRemaining(DURATION_SECONDS);
   }, [userProfile, currentTest, currentTestIndex, totalBeats, intervalMs]);
 
   // 입력 처리
@@ -502,7 +502,7 @@ function AssessmentContent() {
               </ol>
             </div>
             <p className="text-gray-600">
-              각 검사는 <span className="font-bold">60 BPM</span>으로 <span className="font-bold">1분</span>간 진행됩니다.
+              각 검사는 <span className="font-bold">60 BPM</span>으로 <span className="font-bold">40초</span>간 진행됩니다.
             </p>
           </div>
           <button
@@ -531,10 +531,16 @@ function AssessmentContent() {
           <p className="text-xl text-gray-600 mb-8">
             다음 검사: <span className="font-bold text-blue-600">{ASSESSMENT_SEQUENCE[currentTestIndex + 1]?.name}</span>
           </p>
-          <p className="text-lg text-gray-500 mb-8">
-            준비가 되면 아무 키나 눌러주세요
+          <button
+            onClick={handleNextTest}
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white py-4 px-8 rounded-lg font-bold text-xl transition-all shadow-lg hover:shadow-xl mb-4"
+          >
+            다음 검사 시작
+          </button>
+          <p className="text-sm text-gray-400">
+            (또는 아무 키나 눌러주세요)
           </p>
-          <div className="text-gray-400 text-sm">
+          <div className="text-gray-400 text-sm mt-4">
             진행 상황: {currentTestIndex + 1} / {ASSESSMENT_SEQUENCE.length}
           </div>
         </div>
