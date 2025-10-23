@@ -316,8 +316,12 @@ function AssessmentContent() {
         }
 
         if (prev + 1 >= totalBeats) {
+          console.log('Reached final beat, calling finishTest in 500ms');
           clearInterval(beatTimer);
-          setTimeout(() => finishTestRef.current?.(), 500);
+          setTimeout(() => {
+            console.log('Calling finishTestRef.current');
+            finishTestRef.current?.();
+          }, 500);
           return prev + 1; // 마지막 비트까지 카운트
         }
         return prev + 1;
@@ -346,9 +350,14 @@ function AssessmentContent() {
 
   // 검사 종료
   const finishTest = useCallback(() => {
+    console.log('finishTest called');
     const currentSession = sessionRef.current;
-    if (!currentSession) return;
+    if (!currentSession) {
+      console.log('No current session, returning');
+      return;
+    }
 
+    console.log('Current test index:', currentTestIndexRef.current);
     setIsRunning(false);
 
     const results = TimingEvaluator.evaluateSession(
@@ -357,13 +366,16 @@ function AssessmentContent() {
       currentSession.settings.trainingType
     );
 
+    console.log('Results:', results);
     setAllResults((prev) => [...prev, results]);
     setSession(null);
 
     // 다음 검사가 있으면 대기 상태, 없으면 완료
     if (currentTestIndexRef.current < ASSESSMENT_SEQUENCE.length - 1) {
+      console.log('Setting phase to waiting');
       setPhase('waiting');
     } else {
+      console.log('Setting phase to complete');
       setPhase('complete');
     }
   }, []);
@@ -372,6 +384,11 @@ function AssessmentContent() {
   useEffect(() => {
     finishTestRef.current = finishTest;
   }, [finishTest]);
+
+  // Phase 변경 추적
+  useEffect(() => {
+    console.log('Phase changed to:', phase);
+  }, [phase]);
 
   // 다음 검사로 진행
   const handleNextTest = useCallback(() => {
