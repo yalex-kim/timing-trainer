@@ -12,15 +12,14 @@ import {
   TimingFeedback as TimingFeedbackType,
 } from '@/types/evaluation';
 import { PatternGenerator, TimingEvaluator } from '@/utils/evaluator';
-import { formatTime, createNavigationHandlers } from '@/utils/commonHelpers';
+import { createNavigationHandlers } from '@/utils/commonHelpers';
 import { useInputHandler } from '@/hooks/useInputHandler';
 import { useAudioBeep } from '@/hooks/useAudioBeep';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import TimingFeedback from '@/components/TimingFeedback';
 import SessionResults from '@/components/SessionResults';
-import { ExpectedInputDisplay } from '@/components/TimingFeedback';
 import ComprehensiveAssessmentReport from '@/components/ComprehensiveAssessmentReport';
 import { generateComprehensiveReport } from '@/utils/assessmentReport';
+import { TrainingDisplay } from '@/components/TrainingDisplay';
 
 // 검사 순서 정의
 interface AssessmentTest {
@@ -599,209 +598,40 @@ function AssessmentContent() {
   const currentBeatData = session?.beats[currentBeat];
   const nextBeatData = session?.beats[currentBeat + 1];
 
-  if (phase === 'testing' && currentTest.trainingType === 'visual') {
-    const shouldShowLeft = currentTest.trainingRange === 'left' || currentTest.trainingRange === 'both';
-    const shouldShowRight = currentTest.trainingRange === 'right' || currentTest.trainingRange === 'both';
-    const leftActive = isActive && (currentTest.trainingRange === 'left' || (currentTest.trainingRange === 'both' && currentSide === 'left'));
-    const rightActive = isActive && (currentTest.trainingRange === 'right' || (currentTest.trainingRange === 'both' && currentSide === 'right'));
+  // 터치 핸들러
+  const handleLeftTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const inputType = currentTest.bodyPart === 'hand' ? 'left-hand' : 'left-foot';
+    handleTouchInput(inputType as InputType);
+  };
 
-    // 색상 결정: 왼손=파랑, 오른손=빨강, 왼발=초록, 오른발=노랑
-    const leftColorActive = currentTest.bodyPart === 'hand' ? 'bg-blue-400' : 'bg-green-400';
-    const leftColorInactive = currentTest.bodyPart === 'hand' ? 'bg-blue-700' : 'bg-green-700';
-    const rightColorActive = currentTest.bodyPart === 'hand' ? 'bg-red-400' : 'bg-yellow-400';
-    const rightColorInactive = currentTest.bodyPart === 'hand' ? 'bg-red-700' : 'bg-yellow-700';
+  const handleRightTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const inputType = currentTest.bodyPart === 'hand' ? 'right-hand' : 'right-foot';
+    handleTouchInput(inputType as InputType);
+  };
 
-    const handleLeftTouch = (e: React.TouchEvent) => {
-      e.preventDefault();
-      const inputType = currentTest.bodyPart === 'hand' ? 'left-hand' : 'left-foot';
-      handleTouchInput(inputType as InputType);
-    };
-
-    const handleRightTouch = (e: React.TouchEvent) => {
-      e.preventDefault();
-      const inputType = currentTest.bodyPart === 'hand' ? 'right-hand' : 'right-foot';
-      handleTouchInput(inputType as InputType);
-    };
-
+  // 검사 화면 (시각/청각 모두 동일한 컴포넌트 사용)
+  if (phase === 'testing') {
     return (
-      <div className="fixed inset-0 bg-black">
-        <div className="absolute top-4 left-4 z-50">
-          <div className="text-white text-xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {currentTest.name} ({currentTestIndex + 1}/{ASSESSMENT_SEQUENCE.length})
-          </div>
-        </div>
-
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {BPM} BPM | {formatTime(timeRemaining)}
-          </div>
-          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
-            {currentBeat} / {totalBeats}
-          </div>
-          <button
-            onClick={handleExit}
-            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
-
-        {currentFeedback && (
-          <TimingFeedback
-            feedback={currentFeedback}
-            currentPoints={currentFeedback.points}
-          />
-        )}
-
-        {currentBeatData && (
-          <ExpectedInputDisplay
-            expectedInputs={currentBeatData.expectedInput.expectedTypes}
-            nextInputs={nextBeatData?.expectedInput.expectedTypes}
-          />
-        )}
-
-        <div className="h-full flex">
-          {shouldShowLeft && (
-            <div
-              onTouchStart={handleLeftTouch}
-              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 cursor-pointer ${
-                leftActive ? `${leftColorActive} border-yellow-300` : `${leftColorInactive} border-white`
-              }`}
-            >
-              {currentTest.trainingRange === 'left' && (
-                <div className="text-white text-9xl pointer-events-none">
-                  {currentTest.bodyPart === 'hand' ? '✋' : '🦶'}
-                  <div className="text-4xl mt-4">{currentTest.bodyPart === 'hand' ? '왼손' : '왼발'}</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {currentTest.trainingRange === 'both' && (
-            <div className="flex flex-col items-center justify-center bg-gray-800 px-8 pointer-events-none">
-              <div className="text-white text-9xl mb-4">
-                {currentTest.bodyPart === 'hand' ? '👐' : '👣'}
-              </div>
-              <div className="text-white text-3xl">양쪽</div>
-            </div>
-          )}
-
-          {shouldShowRight && (
-            <div
-              onTouchStart={handleRightTouch}
-              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 cursor-pointer ${
-                rightActive ? `${rightColorActive} border-yellow-300` : `${rightColorInactive} border-white`
-              }`}
-            >
-              {currentTest.trainingRange === 'right' && (
-                <div className="text-white text-9xl pointer-events-none">
-                  {currentTest.bodyPart === 'hand' ? '🤚' : '🦶'}
-                  <div className="text-4xl mt-4">{currentTest.bodyPart === 'hand' ? '오른손' : '오른발'}</div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (phase === 'testing' && currentTest.trainingType === 'audio') {
-    const shouldShowLeft = currentTest.trainingRange === 'left' || currentTest.trainingRange === 'both';
-    const shouldShowRight = currentTest.trainingRange === 'right' || currentTest.trainingRange === 'both';
-
-    // 색상 결정: 왼손=파랑, 오른손=빨강, 왼발=초록, 오른발=노랑
-    const leftColor = currentTest.bodyPart === 'hand' ? 'bg-blue-700' : 'bg-green-700';
-    const rightColor = currentTest.bodyPart === 'hand' ? 'bg-red-700' : 'bg-yellow-700';
-
-    const handleLeftTouch = (e: React.TouchEvent) => {
-      e.preventDefault();
-      const inputType = currentTest.bodyPart === 'hand' ? 'left-hand' : 'left-foot';
-      handleTouchInput(inputType as InputType);
-    };
-
-    const handleRightTouch = (e: React.TouchEvent) => {
-      e.preventDefault();
-      const inputType = currentTest.bodyPart === 'hand' ? 'right-hand' : 'right-foot';
-      handleTouchInput(inputType as InputType);
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black">
-        <div className="absolute top-4 left-4 z-50">
-          <div className="text-white text-xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {currentTest.name} ({currentTestIndex + 1}/{ASSESSMENT_SEQUENCE.length})
-          </div>
-        </div>
-
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {BPM} BPM | {formatTime(timeRemaining)}
-          </div>
-          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
-            {currentBeat} / {totalBeats}
-          </div>
-          <button
-            onClick={handleExit}
-            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
-
-        {currentFeedback && (
-          <TimingFeedback
-            feedback={currentFeedback}
-            currentPoints={currentFeedback.points}
-          />
-        )}
-
-        {currentBeatData && (
-          <ExpectedInputDisplay
-            expectedInputs={currentBeatData.expectedInput.expectedTypes}
-            nextInputs={nextBeatData?.expectedInput.expectedTypes}
-          />
-        )}
-
-        <div className="h-full flex">
-          {shouldShowLeft && (
-            <div
-              onTouchStart={handleLeftTouch}
-              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 ${leftColor} border-white cursor-pointer`}
-            >
-              {currentTest.trainingRange === 'left' && (
-                <div className="text-white text-9xl pointer-events-none">
-                  {currentTest.bodyPart === 'hand' ? '✋' : '🦶'}
-                  <div className="text-4xl mt-4">{currentTest.bodyPart === 'hand' ? '왼손' : '왼발'}</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {currentTest.trainingRange === 'both' && (
-            <div className="flex flex-col items-center justify-center bg-gray-800 px-8 pointer-events-none">
-              <div className="text-white text-9xl mb-4">
-                {currentTest.bodyPart === 'hand' ? '👐' : '👣'}
-              </div>
-              <div className="text-white text-3xl">양쪽</div>
-            </div>
-          )}
-
-          {shouldShowRight && (
-            <div
-              onTouchStart={handleRightTouch}
-              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 ${rightColor} border-white cursor-pointer`}
-            >
-              {currentTest.trainingRange === 'right' && (
-                <div className="text-white text-9xl pointer-events-none">
-                  {currentTest.bodyPart === 'hand' ? '🤚' : '🦶'}
-                  <div className="text-4xl mt-4">{currentTest.bodyPart === 'hand' ? '오른손' : '오른발'}</div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      <TrainingDisplay
+        trainingType={currentTest.trainingType}
+        bodyPart={currentTest.bodyPart}
+        trainingRange={currentTest.trainingRange}
+        bpm={BPM}
+        timeRemaining={timeRemaining}
+        currentBeat={currentBeat}
+        totalBeats={totalBeats}
+        isActive={isActive}
+        currentSide={currentSide}
+        currentFeedback={currentFeedback}
+        currentBeatData={currentBeatData}
+        nextBeatData={nextBeatData}
+        onLeftTouch={handleLeftTouch}
+        onRightTouch={handleRightTouch}
+        onExit={handleExit}
+        title={`${currentTest.name} (${currentTestIndex + 1}/${ASSESSMENT_SEQUENCE.length})`}
+      />
     );
   }
 

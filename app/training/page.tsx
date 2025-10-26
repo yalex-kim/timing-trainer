@@ -12,13 +12,12 @@ import {
   TimingFeedback as TimingFeedbackType,
 } from '@/types/evaluation';
 import { PatternGenerator, TimingEvaluator } from '@/utils/evaluator';
-import { formatTime, createNavigationHandlers } from '@/utils/commonHelpers';
+import { createNavigationHandlers } from '@/utils/commonHelpers';
 import { useInputHandler } from '@/hooks/useInputHandler';
 import { useAudioBeep } from '@/hooks/useAudioBeep';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import TimingFeedback from '@/components/TimingFeedback';
 import SessionResults from '@/components/SessionResults';
-import { ExpectedInputDisplay } from '@/components/TimingFeedback';
+import { TrainingDisplay } from '@/components/TrainingDisplay';
 
 function TrainingContent() {
   const router = useRouter();
@@ -324,213 +323,39 @@ function TrainingContent() {
   const currentBeatData = session?.beats[currentBeat];
   const nextBeatData = session?.beats[currentBeat + 1];
 
-  // 시각 훈련 모드
-  if (trainingType === 'visual') {
-    const shouldShowLeft = trainingRange === 'left' || trainingRange === 'both';
-    const shouldShowRight = trainingRange === 'right' || trainingRange === 'both';
-    const leftActive = isActive && (trainingRange === 'left' || (trainingRange === 'both' && currentSide === 'left'));
-    const rightActive = isActive && (trainingRange === 'right' || (trainingRange === 'both' && currentSide === 'right'));
+  // 터치 핸들러
+  const handleLeftTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const inputType = bodyPart === 'hand' ? 'left-hand' : 'left-foot';
+    handleTouchInput(inputType as InputType);
+  };
 
-    // 색상 결정: 왼손=파랑, 오른손=빨강, 왼발=초록, 오른발=노랑
-    const leftColorActive = bodyPart === 'hand' ? 'bg-blue-400' : 'bg-green-400';
-    const leftColorInactive = bodyPart === 'hand' ? 'bg-blue-700' : 'bg-green-700';
-    const rightColorActive = bodyPart === 'hand' ? 'bg-red-400' : 'bg-yellow-400';
-    const rightColorInactive = bodyPart === 'hand' ? 'bg-red-700' : 'bg-yellow-700';
+  const handleRightTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const inputType = bodyPart === 'hand' ? 'right-hand' : 'right-foot';
+    handleTouchInput(inputType as InputType);
+  };
 
-    // 터치 핸들러
-    const handleLeftTouch = (e: React.TouchEvent) => {
-      e.preventDefault();
-      const inputType = bodyPart === 'hand' ? 'left-hand' : 'left-foot';
-      handleTouchInput(inputType as InputType);
-    };
-
-    const handleRightTouch = (e: React.TouchEvent) => {
-      e.preventDefault();
-      const inputType = bodyPart === 'hand' ? 'right-hand' : 'right-foot';
-      handleTouchInput(inputType as InputType);
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black">
-        {/* 상단 정보 */}
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {bpm} BPM | {formatTime(timeRemaining)}
-          </div>
-          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
-            {currentBeat} / {totalBeats}
-          </div>
-          <button
-            onClick={handleExit}
-            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* 실시간 피드백 */}
-        {currentFeedback && (
-          <TimingFeedback
-            feedback={currentFeedback}
-            currentPoints={currentFeedback.points}
-          />
-        )}
-
-        {/* 예상 입력 표시 */}
-        {currentBeatData && (
-          <ExpectedInputDisplay
-            expectedInputs={currentBeatData.expectedInput.expectedTypes}
-            nextInputs={nextBeatData?.expectedInput.expectedTypes}
-          />
-        )}
-
-        {/* 시각 영역 (터치 가능) */}
-        <div className="h-full flex">
-          {shouldShowLeft && (
-            <div
-              onTouchStart={handleLeftTouch}
-              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 cursor-pointer ${
-                leftActive ? `${leftColorActive} border-yellow-300` : `${leftColorInactive} border-white`
-              }`}
-            >
-              {trainingRange === 'left' && (
-                <div className="text-white text-9xl pointer-events-none">
-                  {bodyPart === 'hand' ? '✋' : '🦶'}
-                  <div className="text-4xl mt-4">{bodyPart === 'hand' ? '왼손' : '왼발'}</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {trainingRange === 'both' && (
-            <div className="flex flex-col items-center justify-center bg-gray-800 px-8 pointer-events-none">
-              <div className="text-white text-9xl mb-4">
-                {bodyPart === 'hand' ? '👐' : '👣'}
-              </div>
-              <div className="text-white text-3xl">양쪽</div>
-            </div>
-          )}
-
-          {shouldShowRight && (
-            <div
-              onTouchStart={handleRightTouch}
-              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 cursor-pointer ${
-                rightActive ? `${rightColorActive} border-yellow-300` : `${rightColorInactive} border-white`
-              }`}
-            >
-              {trainingRange === 'right' && (
-                <div className="text-white text-9xl pointer-events-none">
-                  {bodyPart === 'hand' ? '🤚' : '🦶'}
-                  <div className="text-4xl mt-4">{bodyPart === 'hand' ? '오른손' : '오른발'}</div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // 청각 훈련 모드 (시각 모드와 동일한 UI)
-  if (trainingType === 'audio') {
-    const shouldShowLeft = trainingRange === 'left' || trainingRange === 'both';
-    const shouldShowRight = trainingRange === 'right' || trainingRange === 'both';
-
-    // 색상 결정: 왼손=파랑, 오른손=빨강, 왼발=초록, 오른발=노랑
-    const leftColor = bodyPart === 'hand' ? 'bg-blue-700' : 'bg-green-700';
-    const rightColor = bodyPart === 'hand' ? 'bg-red-700' : 'bg-yellow-700';
-
-    // 터치 핸들러
-    const handleLeftTouch = (e: React.TouchEvent) => {
-      e.preventDefault();
-      const inputType = bodyPart === 'hand' ? 'left-hand' : 'left-foot';
-      handleTouchInput(inputType as InputType);
-    };
-
-    const handleRightTouch = (e: React.TouchEvent) => {
-      e.preventDefault();
-      const inputType = bodyPart === 'hand' ? 'right-hand' : 'right-foot';
-      handleTouchInput(inputType as InputType);
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black">
-        {/* 상단 정보 */}
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {bpm} BPM | {formatTime(timeRemaining)}
-          </div>
-          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
-            {currentBeat} / {totalBeats}
-          </div>
-          <button
-            onClick={handleExit}
-            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* 실시간 피드백 */}
-        {currentFeedback && (
-          <TimingFeedback
-            feedback={currentFeedback}
-            currentPoints={currentFeedback.points}
-          />
-        )}
-
-        {/* 예상 입력 표시 */}
-        {currentBeatData && (
-          <ExpectedInputDisplay
-            expectedInputs={currentBeatData.expectedInput.expectedTypes}
-            nextInputs={nextBeatData?.expectedInput.expectedTypes}
-          />
-        )}
-
-        {/* 청각 영역 (시각 모드와 동일, 터치 가능) */}
-        <div className="h-full flex">
-          {shouldShowLeft && (
-            <div
-              onTouchStart={handleLeftTouch}
-              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 ${leftColor} border-white cursor-pointer`}
-            >
-              {trainingRange === 'left' && (
-                <div className="text-white text-9xl pointer-events-none">
-                  {bodyPart === 'hand' ? '✋' : '🦶'}
-                  <div className="text-4xl mt-4">{bodyPart === 'hand' ? '왼손' : '왼발'}</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {trainingRange === 'both' && (
-            <div className="flex flex-col items-center justify-center bg-gray-800 px-8 pointer-events-none">
-              <div className="text-white text-9xl mb-4">
-                {bodyPart === 'hand' ? '👐' : '👣'}
-              </div>
-              <div className="text-white text-3xl">양쪽</div>
-            </div>
-          )}
-
-          {shouldShowRight && (
-            <div
-              onTouchStart={handleRightTouch}
-              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 ${rightColor} border-white cursor-pointer`}
-            >
-              {trainingRange === 'right' && (
-                <div className="text-white text-9xl pointer-events-none">
-                  {bodyPart === 'hand' ? '🤚' : '🦶'}
-                  <div className="text-4xl mt-4">{bodyPart === 'hand' ? '오른손' : '오른발'}</div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return null;
+  // 훈련 화면 (시각/청각 모두 동일한 컴포넌트 사용)
+  return (
+    <TrainingDisplay
+      trainingType={trainingType}
+      bodyPart={bodyPart}
+      trainingRange={trainingRange}
+      bpm={bpm}
+      timeRemaining={timeRemaining}
+      currentBeat={currentBeat}
+      totalBeats={totalBeats}
+      isActive={isActive}
+      currentSide={currentSide}
+      currentFeedback={currentFeedback}
+      currentBeatData={currentBeatData}
+      nextBeatData={nextBeatData}
+      onLeftTouch={handleLeftTouch}
+      onRightTouch={handleRightTouch}
+      onExit={handleExit}
+    />
+  );
 }
 
 export default function TrainingPage() {
