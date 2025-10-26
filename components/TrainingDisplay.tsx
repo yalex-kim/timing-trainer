@@ -4,7 +4,6 @@ import { InputType, BeatData, TimingFeedback as TimingFeedbackType } from '@/typ
 import { getBodyPartColors, getBodyPartLabel, getBodyPartIcon } from '@/utils/bodyPartColors';
 import { formatTime } from '@/utils/commonHelpers';
 import TimingFeedback from './TimingFeedback';
-import { ExpectedInputDisplay } from './TimingFeedback';
 
 interface TrainingDisplayProps {
   trainingType: TrainingType;
@@ -25,6 +24,8 @@ interface TrainingDisplayProps {
   title?: string; // Optional title for assessment mode
 }
 
+type BodyPartType = 'left-hand' | 'right-hand' | 'left-foot' | 'right-foot';
+
 export function TrainingDisplay({
   trainingType,
   bodyPart,
@@ -43,51 +44,114 @@ export function TrainingDisplay({
   onExit,
   title,
 }: TrainingDisplayProps) {
-  const shouldShowLeft = trainingRange === 'left' || trainingRange === 'both';
-  const shouldShowRight = trainingRange === 'right' || trainingRange === 'both';
+  // 각 영역이 현재 세션에서 활성화되어 있는지 확인
+  const isBodyPartEnabled = (part: BodyPartType): boolean => {
+    const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
 
-  // Visual mode: determine active state
-  const leftActive = trainingType === 'visual' && isActive && (trainingRange === 'left' || (trainingRange === 'both' && currentSide === 'left'));
-  const rightActive = trainingType === 'visual' && isActive && (trainingRange === 'right' || (trainingRange === 'both' && currentSide === 'right'));
+    // 신체 부위가 맞는지 확인
+    if (bodyPart !== type) return false;
 
-  // Get colors for both sides
-  const leftColors = getBodyPartColors(bodyPart, 'left');
-  const rightColors = getBodyPartColors(bodyPart, 'right');
+    // 범위가 맞는지 확인
+    if (trainingRange === 'both') return true;
+    if (trainingRange === side) return true;
 
-  // Determine final colors based on mode and active state
-  const leftColorClass = trainingType === 'visual'
-    ? (leftActive ? leftColors.active : leftColors.inactive)
-    : leftColors.inactive;
+    return false;
+  };
 
-  const rightColorClass = trainingType === 'visual'
-    ? (rightActive ? rightColors.active : rightColors.inactive)
-    : rightColors.inactive;
+  // 시각 모드에서 현재 눌러야 하는 영역인지 확인
+  const isBodyPartActive = (part: BodyPartType): boolean => {
+    if (trainingType !== 'visual') return false;
+    if (!isActive) return false;
+
+    const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
+
+    // 신체 부위가 맞는지 확인
+    if (bodyPart !== type) return false;
+
+    // 현재 눌러야 하는 쪽인지 확인
+    if (trainingRange === 'both' && currentSide === side) return true;
+    if (trainingRange === side) return true;
+
+    return false;
+  };
+
+  // 터치 핸들러
+  const handleTouch = (part: BodyPartType) => (e: React.TouchEvent) => {
+    e.preventDefault();
+    if (!isBodyPartEnabled(part)) return; // 비활성화된 영역은 터치 무시
+
+    const [side] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
+    if (side === 'left') {
+      onLeftTouch(e);
+    } else {
+      onRightTouch(e);
+    }
+  };
+
+  // 영역 렌더링
+  const renderBodyPart = (part: BodyPartType) => {
+    const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
+    const enabled = isBodyPartEnabled(part);
+    const active = isBodyPartActive(part);
+
+    // 색상 결정
+    let bgColor: string;
+    let opacity = 'opacity-100';
+
+    if (!enabled) {
+      // 비활성화된 영역: 회색
+      bgColor = 'bg-gray-600';
+      opacity = 'opacity-40';
+    } else {
+      // 활성화된 영역: 신체 부위별 색상
+      const colors = getBodyPartColors(type as BodyPart, side);
+      bgColor = active ? colors.active : colors.inactive;
+    }
+
+    // 아이콘 크기 및 밝기
+    const iconScale = active ? 'scale-125' : 'scale-100';
+    const iconBrightness = active ? 'brightness-125' : 'brightness-100';
+
+    return (
+      <div
+        key={part}
+        onTouchStart={handleTouch(part)}
+        className={`flex items-center justify-center border-2 border-gray-800 transition-all duration-200 ${
+          enabled ? 'cursor-pointer' : 'cursor-not-allowed'
+        } ${bgColor} ${opacity}`}
+      >
+        <div className={`text-white text-center pointer-events-none transition-transform duration-200 ${iconScale} ${iconBrightness}`}>
+          <div className="text-7xl mb-2">{getBodyPartIcon(type as BodyPart, side)}</div>
+          <div className="text-2xl font-bold">{getBodyPartLabel(type as BodyPart, side)}</div>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="fixed inset-0 bg-black">
-      {/* Title (for assessment mode) */}
-      {title && (
-        <div className="absolute top-4 left-4 z-50">
-          <div className="text-white text-xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {title}
-          </div>
+    <div className="fixed inset-0 bg-black flex flex-col">
+      {/* Header area */}
+      <div className="h-20 flex items-center justify-between px-4 bg-gray-900 border-b-2 border-gray-700">
+        {/* Title (훈련/검사 표시) */}
+        <div className="text-white text-xl font-bold">
+          {title || '훈련 모드'}
         </div>
-      )}
 
-      {/* Top info */}
-      <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-        <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-          {bpm} BPM | {formatTime(timeRemaining)}
+        {/* Top info */}
+        <div className="flex items-center gap-4">
+          <div className="text-white text-xl font-bold">
+            {bpm} BPM | {formatTime(timeRemaining)}
+          </div>
+          <div className="text-white text-lg">
+            {currentBeat} / {totalBeats}
+          </div>
+          <button
+            onClick={onExit}
+            className="bg-red-500 hover:bg-red-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold"
+          >
+            ✕
+          </button>
         </div>
-        <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
-          {currentBeat} / {totalBeats}
-        </div>
-        <button
-          onClick={onExit}
-          className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
-        >
-          ✕
-        </button>
       </div>
 
       {/* Real-time feedback */}
@@ -98,60 +162,19 @@ export function TrainingDisplay({
         />
       )}
 
-      {/* Expected input display */}
-      {currentBeatData && (
-        <ExpectedInputDisplay
-          expectedInputs={currentBeatData.expectedInput.expectedTypes}
-          nextInputs={nextBeatData?.expectedInput.expectedTypes}
-        />
-      )}
+      {/* 4-split grid (2x2) */}
+      <div className="flex-1 grid grid-cols-2 grid-rows-2">
+        {/* Top-left: Left hand */}
+        {renderBodyPart('left-hand')}
 
-      {/* Training areas */}
-      <div className="h-full flex">
-        {shouldShowLeft && (
-          <div
-            onTouchStart={onLeftTouch}
-            className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 cursor-pointer ${
-              trainingType === 'visual' && leftActive
-                ? `${leftColorClass} border-yellow-300`
-                : `${leftColorClass} border-white`
-            }`}
-          >
-            {trainingRange === 'left' && (
-              <div className="text-white text-9xl pointer-events-none">
-                {getBodyPartIcon(bodyPart, 'left')}
-                <div className="text-4xl mt-4">{getBodyPartLabel(bodyPart, 'left')}</div>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Top-right: Right hand */}
+        {renderBodyPart('right-hand')}
 
-        {trainingRange === 'both' && (
-          <div className="flex flex-col items-center justify-center bg-gray-800 px-8 pointer-events-none">
-            <div className="text-white text-9xl mb-4">
-              {bodyPart === 'hand' ? '👐' : '👣'}
-            </div>
-            <div className="text-white text-3xl">양쪽</div>
-          </div>
-        )}
+        {/* Bottom-left: Left foot */}
+        {renderBodyPart('left-foot')}
 
-        {shouldShowRight && (
-          <div
-            onTouchStart={onRightTouch}
-            className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 cursor-pointer ${
-              trainingType === 'visual' && rightActive
-                ? `${rightColorClass} border-yellow-300`
-                : `${rightColorClass} border-white`
-            }`}
-          >
-            {trainingRange === 'right' && (
-              <div className="text-white text-9xl pointer-events-none">
-                {getBodyPartIcon(bodyPart, 'right')}
-                <div className="text-4xl mt-4">{getBodyPartLabel(bodyPart, 'right')}</div>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Bottom-right: Right foot */}
+        {renderBodyPart('right-foot')}
       </div>
     </div>
   );
