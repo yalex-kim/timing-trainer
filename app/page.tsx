@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { TrainingSettings, DEFAULT_SETTINGS, CustomBodyPart } from '@/types';
 import { UserProfile } from '@/types/evaluation';
 import { calculateAge } from '@/utils/evaluator';
+import { getBodyPartLabel, getBodyPartColor, getBodyPartIcon } from '@/constants/bodyParts';
 
 export default function Home() {
   const router = useRouter();
@@ -117,28 +118,6 @@ export default function Home() {
     const sequence = [...(settings.customSequence || [])];
     sequence.splice(index, 1);
     setSettings({ ...settings, customSequence: sequence });
-  };
-
-  const getBodyPartLabel = (part: CustomBodyPart): string => {
-    switch (part) {
-      case 'left-hand': return '왼손';
-      case 'right-hand': return '오른손';
-      case 'left-foot': return '왼발';
-      case 'right-foot': return '오른발';
-    }
-  };
-
-  const getBodyPartColor = (part: CustomBodyPart): string => {
-    switch (part) {
-      case 'left-hand': return 'bg-blue-500';
-      case 'right-hand': return 'bg-red-500';
-      case 'left-foot': return 'bg-green-500';
-      case 'right-foot': return 'bg-yellow-500';
-    }
-  };
-
-  const getBodyPartIcon = (part: CustomBodyPart): string => {
-    return part.includes('hand') ? '✋' : '🦶';
   };
 
   // 사용자 정보 입력 화면
