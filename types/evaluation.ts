@@ -10,7 +10,7 @@
 export interface UserProfile {
   name: string;
   birthDate: string;        // YYYY-MM-DD
-  gender: 'male' | 'female' | 'other';
+  gender: 'male' | 'female';
   age?: number;             // 계산된 나이 (자동)
 }
 

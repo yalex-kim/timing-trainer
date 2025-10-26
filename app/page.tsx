@@ -17,7 +17,7 @@ export default function Home() {
   const [formData, setFormData] = useState({
     name: '',
     birthDate: '',
-    gender: 'male' as 'male' | 'female' | 'other',
+    gender: 'male' as 'male' | 'female',
   });
 
   // LocalStorage에서 사용자 정보 로드
@@ -121,7 +121,7 @@ export default function Home() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 성별
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, gender: 'male' })}
@@ -143,17 +143,6 @@ export default function Home() {
                   }`}
                 >
                   여성
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, gender: 'other' })}
-                  className={`py-3 px-4 rounded-lg font-medium transition-colors ${
-                    formData.gender === 'other'
-                      ? 'bg-purple-500 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  기타
                 </button>
               </div>
             </div>
@@ -236,6 +225,17 @@ export default function Home() {
                 검사 모드
               </button>
             </div>
+          </div>
+
+          {/* 검사 기준표 보기 버튼 */}
+          <div>
+            <button
+              onClick={() => router.push('/standards')}
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 border-2 border-gray-300 py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              <span>📊</span>
+              <span>연령별 검사 기준표 보기</span>
+            </button>
           </div>
 
           {mode === 'training' && (
