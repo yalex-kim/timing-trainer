@@ -58,7 +58,7 @@ export function getAgeGroup(age: number): AgeGroup {
 export function determineClassByAge(
   taskAverage: number,
   age: number,
-  mode: 'visual' | 'audio'
+  mode: 'visual' | 'auditory'
 ): TimingClass {
   const ageGroup = getAgeGroup(age);
   const standards = AGE_BASED_STANDARDS[mode][ageGroup];
@@ -317,8 +317,11 @@ export class TimingEvaluator {
         ? deviations.reduce((a, b) => a + b, 0) / deviations.length
         : 999;
 
+    // trainingMode를 AGE_BASED_STANDARDS 키에 맞게 매핑
+    const evaluationMode = trainingMode === 'audio' ? 'auditory' : trainingMode;
+
     // Class 결정 (연령 및 모드 기반)
-    const classLevel = determineClassByAge(taskAverage, userAge, trainingMode);
+    const classLevel = determineClassByAge(taskAverage, userAge, evaluationMode);
 
     // Early/Late/OnTarget 분포
     const earlyCount = correctInputBeats.filter((b) => b.deviation! < -5).length;
