@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { TrainingType, BodyPart, TrainingRange } from '@/types';
+import { TrainingType, BodyPart, TrainingRange, CustomBodyPart } from '@/types';
 import {
   BeatData,
   InputEvent,
@@ -20,6 +20,50 @@ import TimingFeedback from '@/components/TimingFeedback';
 import SessionResults from '@/components/SessionResults';
 import { ExpectedInputDisplay } from '@/components/TimingFeedback';
 
+// Body part configuration (inline to avoid module initialization issues)
+const BODY_PART_CONFIG = {
+  'left-hand': {
+    label: '왼손',
+    icon: '✋',
+    color: {
+      bg: 'bg-blue-500',
+      bgActive: 'bg-blue-300',
+      border: 'border-blue-600',
+      hex: '#3B82F6',
+    },
+  },
+  'right-hand': {
+    label: '오른손',
+    icon: '🤚',
+    color: {
+      bg: 'bg-red-500',
+      bgActive: 'bg-red-300',
+      border: 'border-red-600',
+      hex: '#EF4444',
+    },
+  },
+  'left-foot': {
+    label: '왼발',
+    icon: '🦶',
+    color: {
+      bg: 'bg-green-500',
+      bgActive: 'bg-green-300',
+      border: 'border-green-600',
+      hex: '#22C55E',
+    },
+  },
+  'right-foot': {
+    label: '오른발',
+    icon: '🦶',
+    color: {
+      bg: 'bg-yellow-500',
+      bgActive: 'bg-yellow-300',
+      border: 'border-yellow-600',
+      hex: '#EAB308',
+    },
+  },
+} as const;
+
 function TrainingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -29,9 +73,13 @@ function TrainingContent() {
   const trainingRange = searchParams.get('trainingRange') as TrainingRange;
   const bpm = parseInt(searchParams.get('bpm') || '60');
   const duration = parseInt(searchParams.get('duration') || '1');
+  const customSequenceParam = searchParams.get('customSequence');
+
+  // Parse custom sequence
+  const customSequence: CustomBodyPart[] = customSequenceParam ? JSON.parse(customSequenceParam) : [];
 
   // 훈련 패턴 결정
-  const pattern = PatternGenerator.settingsToPattern(bodyPart, trainingRange);
+  const pattern = customSequence.length > 0 ? null : PatternGenerator.settingsToPattern(bodyPart, trainingRange);
 
   // 상태 관리
   const [session, setSession] = useState<TrainingSession | null>(null);
@@ -45,6 +93,9 @@ function TrainingContent() {
   const [currentSide, setCurrentSide] = useState<'left' | 'right'>('left');
   const [isActive, setIsActive] = useState(false);
 
+  // Custom sequence state
+  const [activeBodyParts, setActiveBodyParts] = useState<Set<CustomBodyPart>>(new Set());
+
   // Custom hooks
   const { userProfile } = useUserProfile();
   const { playBeep } = useAudioBeep();
@@ -54,6 +105,17 @@ function TrainingContent() {
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
+  const currentBeatRef = useRef<number>(0);
+  const customSequenceRef = useRef<CustomBodyPart[]>(customSequence);
+
+  // Sync refs
+  useEffect(() => {
+    currentBeatRef.current = currentBeat;
+  }, [currentBeat]);
+
+  useEffect(() => {
+    customSequenceRef.current = customSequence;
+  }, [customSequence]);
 
   // sessionRef 동기화
   useEffect(() => {
@@ -63,12 +125,30 @@ function TrainingContent() {
   // 세션 초기화
   useEffect(() => {
     if (!userProfile) return; // 사용자 프로필 로드 대기
+    if (customSequence.length === 0 && !pattern) return; // Wait for pattern or custom sequence
 
     startTimeRef.current = performance.now();
     const beats: BeatData[] = [];
 
+    // Generate beats with custom sequence pattern or traditional pattern
     for (let i = 0; i < totalBeats; i++) {
-      const expectedInput = PatternGenerator.generateExpectedInput(pattern, i);
+      let expectedInput;
+
+      if (customSequence.length > 0) {
+        // Custom sequence mode
+        const sequenceIndex = i % customSequence.length;
+        const bodyPart = customSequence[sequenceIndex];
+        const expectedTypes: InputType[] = [bodyPart as InputType];
+
+        expectedInput = {
+          expectedTypes,
+          description: BODY_PART_CONFIG[bodyPart].label,
+        };
+      } else {
+        // Traditional pattern mode
+        expectedInput = PatternGenerator.generateExpectedInput(pattern, i);
+      }
+
       beats.push({
         beatNumber: i,
         expectedTime: i * intervalMs,
@@ -94,14 +174,15 @@ function TrainingContent() {
         trainingRange,
         bpm,
         durationMinutes: duration,
-        pattern,
+        pattern: customSequence.length > 0 ? customSequence : pattern,
+        customSequence: customSequence.length > 0 ? customSequence : undefined,
       },
       beats,
     };
 
     setSession(newSession);
     setIsRunning(true);
-  }, [totalBeats, pattern, intervalMs, trainingType, bodyPart, trainingRange, bpm, duration, userProfile]);
+  }, [totalBeats, pattern, intervalMs, trainingType, bodyPart, trainingRange, bpm, duration, userProfile, customSequence]);
 
   // 입력 처리
   const handleInput = useCallback((inputEvent: InputEvent) => {
@@ -204,19 +285,33 @@ function TrainingContent() {
     if (!isRunning) return;
 
     const beatTimer = setInterval(() => {
+      const currentBeatValue = currentBeatRef.current;
+      const sequence = customSequenceRef.current;
+
       // 비트 효과
       if (trainingType === 'audio') {
         playBeep();
       }
 
       if (trainingType === 'visual') {
-        setIsActive(true);
-        if (trainingRange === 'both') {
-          setCurrentSide((prev) => (prev === 'left' ? 'right' : 'left'));
+        if (sequence.length > 0) {
+          // Custom sequence mode - show specific body part
+          const sequenceIndex = currentBeatValue % sequence.length;
+          const activePart = sequence[sequenceIndex];
+          setActiveBodyParts(new Set([activePart]));
+          setTimeout(() => {
+            setActiveBodyParts(new Set());
+          }, intervalMs * 0.3);
+        } else {
+          // Traditional mode
+          setIsActive(true);
+          if (trainingRange === 'both') {
+            setCurrentSide((prev) => (prev === 'left' ? 'right' : 'left'));
+          }
+          setTimeout(() => {
+            setIsActive(false);
+          }, intervalMs * 0.3);
         }
-        setTimeout(() => {
-          setIsActive(false);
-        }, intervalMs * 0.3);
       }
 
       // 비트 카운터 증가 전에 이전 비트 체크
@@ -251,7 +346,7 @@ function TrainingContent() {
     }, intervalMs);
 
     return () => clearInterval(beatTimer);
-  }, [isRunning, intervalMs, totalBeats, trainingType, trainingRange, playBeep]);
+  }, [isRunning, intervalMs, totalBeats, trainingType, trainingRange, playBeep, finishSession]);
 
   // 타이머 (남은 시간)
   useEffect(() => {
