@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, Suspense, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { TrainingType, BodyPart, TrainingRange, CustomBodyPart } from '@/types';
+import { TrainingType, BodyPart, TrainingRange } from '@/types';
 import {
   BeatData,
   InputEvent,
@@ -20,50 +20,6 @@ import TimingFeedback from '@/components/TimingFeedback';
 import SessionResults from '@/components/SessionResults';
 import { ExpectedInputDisplay } from '@/components/TimingFeedback';
 
-// Body part configuration (inline to avoid module initialization issues)
-const BODY_PART_CONFIG = {
-  'left-hand': {
-    label: '왼손',
-    icon: '✋',
-    color: {
-      bg: 'bg-blue-500',
-      bgActive: 'bg-blue-300',
-      border: 'border-blue-600',
-      hex: '#3B82F6',
-    },
-  },
-  'right-hand': {
-    label: '오른손',
-    icon: '🤚',
-    color: {
-      bg: 'bg-red-500',
-      bgActive: 'bg-red-300',
-      border: 'border-red-600',
-      hex: '#EF4444',
-    },
-  },
-  'left-foot': {
-    label: '왼발',
-    icon: '🦶',
-    color: {
-      bg: 'bg-green-500',
-      bgActive: 'bg-green-300',
-      border: 'border-green-600',
-      hex: '#22C55E',
-    },
-  },
-  'right-foot': {
-    label: '오른발',
-    icon: '🦶',
-    color: {
-      bg: 'bg-yellow-500',
-      bgActive: 'bg-yellow-300',
-      border: 'border-yellow-600',
-      hex: '#EAB308',
-    },
-  },
-} as const;
-
 function TrainingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -73,25 +29,9 @@ function TrainingContent() {
   const trainingRange = searchParams.get('trainingRange') as TrainingRange;
   const bpm = parseInt(searchParams.get('bpm') || '60');
   const duration = parseInt(searchParams.get('duration') || '1');
-  const customSequenceParam = searchParams.get('customSequence');
 
-  // Parse custom sequence (memoized to prevent re-parsing on every render)
-  const customSequence: CustomBodyPart[] = useMemo(() => {
-    if (!customSequenceParam) return [];
-    try {
-      return JSON.parse(customSequenceParam);
-    } catch (error) {
-      console.error('Failed to parse custom sequence:', error);
-      return [];
-    }
-  }, [customSequenceParam]);
-
-  // 훈련 패턴 결정 (memoized to prevent re-calculation on every render)
-  const pattern = useMemo(() => {
-    if (customSequence.length > 0) return null;
-    if (!bodyPart || !trainingRange) return null;
-    return PatternGenerator.settingsToPattern(bodyPart, trainingRange);
-  }, [customSequence.length, bodyPart, trainingRange]);
+  // 훈련 패턴 결정
+  const pattern = PatternGenerator.settingsToPattern(bodyPart, trainingRange);
 
   // 상태 관리
   const [session, setSession] = useState<TrainingSession | null>(null);
@@ -105,9 +45,6 @@ function TrainingContent() {
   const [currentSide, setCurrentSide] = useState<'left' | 'right'>('left');
   const [isActive, setIsActive] = useState(false);
 
-  // Custom sequence state
-  const [activeBodyParts, setActiveBodyParts] = useState<Set<CustomBodyPart>>(new Set());
-
   // Custom hooks
   const { userProfile } = useUserProfile();
   const { playBeep } = useAudioBeep();
@@ -117,17 +54,6 @@ function TrainingContent() {
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
-  const currentBeatRef = useRef<number>(0);
-  const customSequenceRef = useRef<CustomBodyPart[]>(customSequence);
-
-  // Sync refs
-  useEffect(() => {
-    currentBeatRef.current = currentBeat;
-  }, [currentBeat]);
-
-  useEffect(() => {
-    customSequenceRef.current = customSequence;
-  }, [customSequence]);
 
   // sessionRef 동기화
   useEffect(() => {
@@ -137,36 +63,12 @@ function TrainingContent() {
   // 세션 초기화
   useEffect(() => {
     if (!userProfile) return; // 사용자 프로필 로드 대기
-    if (customSequence.length === 0 && !pattern) return; // Wait for pattern or custom sequence
 
     startTimeRef.current = performance.now();
     const beats: BeatData[] = [];
 
-    // Generate beats with custom sequence pattern or traditional pattern
     for (let i = 0; i < totalBeats; i++) {
-      let expectedInput;
-
-      if (customSequence.length > 0) {
-        // Custom sequence mode
-        const sequenceIndex = i % customSequence.length;
-        const bodyPart = customSequence[sequenceIndex];
-        const expectedTypes: InputType[] = [bodyPart as InputType];
-
-        const config = BODY_PART_CONFIG[bodyPart];
-        if (!config) {
-          console.error('Invalid body part in custom sequence:', bodyPart);
-          continue; // Skip this beat if invalid
-        }
-
-        expectedInput = {
-          expectedTypes,
-          description: config.label,
-        };
-      } else {
-        // Traditional pattern mode
-        expectedInput = PatternGenerator.generateExpectedInput(pattern, i);
-      }
-
+      const expectedInput = PatternGenerator.generateExpectedInput(pattern, i);
       beats.push({
         beatNumber: i,
         expectedTime: i * intervalMs,
@@ -192,15 +94,14 @@ function TrainingContent() {
         trainingRange,
         bpm,
         durationMinutes: duration,
-        pattern: customSequence.length > 0 ? customSequence : pattern,
-        customSequence: customSequence.length > 0 ? customSequence : undefined,
+        pattern,
       },
       beats,
     };
 
     setSession(newSession);
     setIsRunning(true);
-  }, [totalBeats, pattern, intervalMs, trainingType, bodyPart, trainingRange, bpm, duration, userProfile, customSequence]);
+  }, [totalBeats, pattern, intervalMs, trainingType, bodyPart, trainingRange, bpm, duration, userProfile]);
 
   // 입력 처리
   const handleInput = useCallback((inputEvent: InputEvent) => {
@@ -279,38 +180,43 @@ function TrainingContent() {
     enableKeyboard: true,
   });
 
+  // 터치 입력 핸들러
+  const handleTouchInput = useCallback((inputType: InputType) => {
+    if (!session || !isRunning) return;
+
+    const currentBeatData = session.beats[currentBeat];
+    if (!currentBeatData) return;
+
+    // 터치 이벤트 생성
+    const touchEvent: InputEvent = {
+      type: inputType,
+      timestamp: performance.now() - startTimeRef.current,
+      source: 'touch',
+      rawData: { inputType },
+    };
+
+    // 기존 handleInput 로직 재사용
+    handleInput(touchEvent);
+  }, [session, currentBeat, isRunning, handleInput]);
+
   // 비트 진행 (시각/청각 효과 + 비트 카운터)
   useEffect(() => {
     if (!isRunning) return;
 
     const beatTimer = setInterval(() => {
-      const currentBeatValue = currentBeatRef.current;
-      const sequence = customSequenceRef.current;
-
       // 비트 효과
       if (trainingType === 'audio') {
         playBeep();
       }
 
       if (trainingType === 'visual') {
-        if (sequence.length > 0) {
-          // Custom sequence mode - show specific body part
-          const sequenceIndex = currentBeatValue % sequence.length;
-          const activePart = sequence[sequenceIndex];
-          setActiveBodyParts(new Set([activePart]));
-          setTimeout(() => {
-            setActiveBodyParts(new Set());
-          }, intervalMs * 0.3);
-        } else {
-          // Traditional mode
-          setIsActive(true);
-          if (trainingRange === 'both') {
-            setCurrentSide((prev) => (prev === 'left' ? 'right' : 'left'));
-          }
-          setTimeout(() => {
-            setIsActive(false);
-          }, intervalMs * 0.3);
+        setIsActive(true);
+        if (trainingRange === 'both') {
+          setCurrentSide((prev) => (prev === 'left' ? 'right' : 'left'));
         }
+        setTimeout(() => {
+          setIsActive(false);
+        }, intervalMs * 0.3);
       }
 
       // 비트 카운터 증가 전에 이전 비트 체크
@@ -345,7 +251,7 @@ function TrainingContent() {
     }, intervalMs);
 
     return () => clearInterval(beatTimer);
-  }, [isRunning, intervalMs, totalBeats, trainingType, trainingRange, playBeep, finishSession]);
+  }, [isRunning, intervalMs, totalBeats, trainingType, trainingRange, playBeep]);
 
   // 타이머 (남은 시간)
   useEffect(() => {
@@ -418,201 +324,7 @@ function TrainingContent() {
   const currentBeatData = session?.beats[currentBeat];
   const nextBeatData = session?.beats[currentBeat + 1];
 
-  // Layout mode helper for custom sequence
-  const getLayoutMode = (): '2-split' | '4-split' | 'traditional' => {
-    if (customSequence.length === 0) return 'traditional';
-    if (customSequence.length <= 2) return '2-split';
-    return '4-split';
-  };
-
-  // Touch handler for custom sequence
-  const handleTouchInput = useCallback((inputType: InputType) => {
-    if (!session || !isRunning) return;
-
-    const touchEvent: InputEvent = {
-      type: inputType,
-      timestamp: performance.now() - startTimeRef.current,
-      source: 'touch',
-      rawData: { inputType },
-    };
-
-    handleInput(touchEvent);
-  }, [session, isRunning, handleInput]);
-
-  const layoutMode = getLayoutMode();
-
-  // 시각 훈련 모드 - Custom Sequence
-  if (trainingType === 'visual' && layoutMode === '4-split') {
-    return (
-      <div className="fixed inset-0 bg-black">
-        {/* Top info */}
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {bpm} BPM | {formatTime(timeRemaining)}
-          </div>
-          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
-            {currentBeat} / {totalBeats}
-          </div>
-          <button
-            onClick={handleExit}
-            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Real-time feedback */}
-        {currentFeedback && (
-          <TimingFeedback
-            feedback={currentFeedback}
-            currentPoints={currentFeedback.points}
-          />
-        )}
-
-        {/* Expected input display */}
-        {currentBeatData && (
-          <ExpectedInputDisplay
-            expectedInputs={currentBeatData.expectedInput.expectedTypes}
-            nextInputs={nextBeatData?.expectedInput.expectedTypes}
-          />
-        )}
-
-        {/* Visual areas - 4-split grid */}
-        <div className="h-full grid grid-cols-2 grid-rows-2">
-          {/* Top-left: Left hand */}
-          {customSequence.includes('left-hand') && (
-            <div
-              onTouchStart={() => handleTouchInput('left-hand')}
-              className={`flex items-center justify-center border-4 cursor-pointer transition-all duration-100 ${
-                activeBodyParts.has('left-hand')
-                  ? `${BODY_PART_CONFIG['left-hand'].color.bgActive} border-yellow-300`
-                  : `${BODY_PART_CONFIG['left-hand'].color.bg} ${BODY_PART_CONFIG['left-hand'].color.border}`
-              }`}
-            >
-              <div className="text-white text-center pointer-events-none">
-                <div className="text-7xl mb-2">{BODY_PART_CONFIG['left-hand'].icon}</div>
-                <div className="text-3xl font-bold">{BODY_PART_CONFIG['left-hand'].label}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Top-right: Right hand */}
-          {customSequence.includes('right-hand') && (
-            <div
-              onTouchStart={() => handleTouchInput('right-hand')}
-              className={`flex items-center justify-center border-4 cursor-pointer transition-all duration-100 ${
-                activeBodyParts.has('right-hand')
-                  ? `${BODY_PART_CONFIG['right-hand'].color.bgActive} border-yellow-300`
-                  : `${BODY_PART_CONFIG['right-hand'].color.bg} ${BODY_PART_CONFIG['right-hand'].color.border}`
-              }`}
-            >
-              <div className="text-white text-center pointer-events-none">
-                <div className="text-7xl mb-2">{BODY_PART_CONFIG['right-hand'].icon}</div>
-                <div className="text-3xl font-bold">{BODY_PART_CONFIG['right-hand'].label}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Bottom-left: Left foot */}
-          {customSequence.includes('left-foot') && (
-            <div
-              onTouchStart={() => handleTouchInput('left-foot')}
-              className={`flex items-center justify-center border-4 cursor-pointer transition-all duration-100 ${
-                activeBodyParts.has('left-foot')
-                  ? `${BODY_PART_CONFIG['left-foot'].color.bgActive} border-yellow-300`
-                  : `${BODY_PART_CONFIG['left-foot'].color.bg} ${BODY_PART_CONFIG['left-foot'].color.border}`
-              }`}
-            >
-              <div className="text-white text-center pointer-events-none">
-                <div className="text-7xl mb-2">{BODY_PART_CONFIG['left-foot'].icon}</div>
-                <div className="text-3xl font-bold">{BODY_PART_CONFIG['left-foot'].label}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Bottom-right: Right foot */}
-          {customSequence.includes('right-foot') && (
-            <div
-              onTouchStart={() => handleTouchInput('right-foot')}
-              className={`flex items-center justify-center border-4 cursor-pointer transition-all duration-100 ${
-                activeBodyParts.has('right-foot')
-                  ? `${BODY_PART_CONFIG['right-foot'].color.bgActive} border-yellow-300`
-                  : `${BODY_PART_CONFIG['right-foot'].color.bg} ${BODY_PART_CONFIG['right-foot'].color.border}`
-              }`}
-            >
-              <div className="text-white text-center pointer-events-none">
-                <div className="text-7xl mb-2">{BODY_PART_CONFIG['right-foot'].icon}</div>
-                <div className="text-3xl font-bold">{BODY_PART_CONFIG['right-foot'].label}</div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // 시각 훈련 모드 - Custom Sequence 2-split
-  if (trainingType === 'visual' && layoutMode === '2-split') {
-    const isVertical = customSequence.every(p => p.includes('hand')) || customSequence.every(p => p.includes('foot'));
-
-    return (
-      <div className="fixed inset-0 bg-black">
-        {/* Top info */}
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {bpm} BPM | {formatTime(timeRemaining)}
-          </div>
-          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
-            {currentBeat} / {totalBeats}
-          </div>
-          <button
-            onClick={handleExit}
-            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Real-time feedback */}
-        {currentFeedback && (
-          <TimingFeedback
-            feedback={currentFeedback}
-            currentPoints={currentFeedback.points}
-          />
-        )}
-
-        {/* Expected input display */}
-        {currentBeatData && (
-          <ExpectedInputDisplay
-            expectedInputs={currentBeatData.expectedInput.expectedTypes}
-            nextInputs={nextBeatData?.expectedInput.expectedTypes}
-          />
-        )}
-
-        {/* Visual areas - 2-split */}
-        <div className={`h-full ${isVertical ? 'flex' : 'flex flex-col'}`}>
-          {customSequence.filter(part => BODY_PART_CONFIG[part]).map((part) => (
-            <div
-              key={part}
-              onTouchStart={() => handleTouchInput(part as InputType)}
-              className={`flex-1 flex items-center justify-center border-4 cursor-pointer transition-all duration-100 ${
-                activeBodyParts.has(part)
-                  ? `${BODY_PART_CONFIG[part].color.bgActive} border-yellow-300`
-                  : `${BODY_PART_CONFIG[part].color.bg} ${BODY_PART_CONFIG[part].color.border}`
-              }`}
-            >
-              <div className="text-white text-center pointer-events-none">
-                <div className="text-8xl mb-4">{BODY_PART_CONFIG[part].icon}</div>
-                <div className="text-4xl font-bold">{BODY_PART_CONFIG[part].label}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // 시각 훈련 모드 - Traditional
+  // 시각 훈련 모드
   if (trainingType === 'visual') {
     const shouldShowLeft = trainingRange === 'left' || trainingRange === 'both';
     const shouldShowRight = trainingRange === 'right' || trainingRange === 'both';
@@ -713,158 +425,7 @@ function TrainingContent() {
     );
   }
 
-  // 청각 훈련 모드 - Custom Sequence 4-split
-  if (trainingType === 'audio' && layoutMode === '4-split') {
-    return (
-      <div className="fixed inset-0 bg-black">
-        {/* Top info */}
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {bpm} BPM | {formatTime(timeRemaining)}
-          </div>
-          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
-            {currentBeat} / {totalBeats}
-          </div>
-          <button
-            onClick={handleExit}
-            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Real-time feedback */}
-        {currentFeedback && (
-          <TimingFeedback
-            feedback={currentFeedback}
-            currentPoints={currentFeedback.points}
-          />
-        )}
-
-        {/* Expected input display */}
-        {currentBeatData && (
-          <ExpectedInputDisplay
-            expectedInputs={currentBeatData.expectedInput.expectedTypes}
-            nextInputs={nextBeatData?.expectedInput.expectedTypes}
-          />
-        )}
-
-        {/* Audio areas - 4-split grid */}
-        <div className="h-full grid grid-cols-2 grid-rows-2">
-          {/* Top-left: Left hand */}
-          {customSequence.includes('left-hand') && (
-            <div
-              onTouchStart={() => handleTouchInput('left-hand')}
-              className={`flex items-center justify-center border-4 cursor-pointer ${BODY_PART_CONFIG['left-hand'].color.bg} ${BODY_PART_CONFIG['left-hand'].color.border}`}
-            >
-              <div className="text-white text-center pointer-events-none">
-                <div className="text-7xl mb-2">{BODY_PART_CONFIG['left-hand'].icon}</div>
-                <div className="text-3xl font-bold">{BODY_PART_CONFIG['left-hand'].label}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Top-right: Right hand */}
-          {customSequence.includes('right-hand') && (
-            <div
-              onTouchStart={() => handleTouchInput('right-hand')}
-              className={`flex items-center justify-center border-4 cursor-pointer ${BODY_PART_CONFIG['right-hand'].color.bg} ${BODY_PART_CONFIG['right-hand'].color.border}`}
-            >
-              <div className="text-white text-center pointer-events-none">
-                <div className="text-7xl mb-2">{BODY_PART_CONFIG['right-hand'].icon}</div>
-                <div className="text-3xl font-bold">{BODY_PART_CONFIG['right-hand'].label}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Bottom-left: Left foot */}
-          {customSequence.includes('left-foot') && (
-            <div
-              onTouchStart={() => handleTouchInput('left-foot')}
-              className={`flex items-center justify-center border-4 cursor-pointer ${BODY_PART_CONFIG['left-foot'].color.bg} ${BODY_PART_CONFIG['left-foot'].color.border}`}
-            >
-              <div className="text-white text-center pointer-events-none">
-                <div className="text-7xl mb-2">{BODY_PART_CONFIG['left-foot'].icon}</div>
-                <div className="text-3xl font-bold">{BODY_PART_CONFIG['left-foot'].label}</div>
-              </div>
-            </div>
-          )}
-
-          {/* Bottom-right: Right foot */}
-          {customSequence.includes('right-foot') && (
-            <div
-              onTouchStart={() => handleTouchInput('right-foot')}
-              className={`flex items-center justify-center border-4 cursor-pointer ${BODY_PART_CONFIG['right-foot'].color.bg} ${BODY_PART_CONFIG['right-foot'].color.border}`}
-            >
-              <div className="text-white text-center pointer-events-none">
-                <div className="text-7xl mb-2">{BODY_PART_CONFIG['right-foot'].icon}</div>
-                <div className="text-3xl font-bold">{BODY_PART_CONFIG['right-foot'].label}</div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // 청각 훈련 모드 - Custom Sequence 2-split
-  if (trainingType === 'audio' && layoutMode === '2-split') {
-    const isVertical = customSequence.every(p => p.includes('hand')) || customSequence.every(p => p.includes('foot'));
-
-    return (
-      <div className="fixed inset-0 bg-black">
-        {/* Top info */}
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {bpm} BPM | {formatTime(timeRemaining)}
-          </div>
-          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
-            {currentBeat} / {totalBeats}
-          </div>
-          <button
-            onClick={handleExit}
-            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Real-time feedback */}
-        {currentFeedback && (
-          <TimingFeedback
-            feedback={currentFeedback}
-            currentPoints={currentFeedback.points}
-          />
-        )}
-
-        {/* Expected input display */}
-        {currentBeatData && (
-          <ExpectedInputDisplay
-            expectedInputs={currentBeatData.expectedInput.expectedTypes}
-            nextInputs={nextBeatData?.expectedInput.expectedTypes}
-          />
-        )}
-
-        {/* Audio areas - 2-split */}
-        <div className={`h-full ${isVertical ? 'flex' : 'flex flex-col'}`}>
-          {customSequence.filter(part => BODY_PART_CONFIG[part]).map((part) => (
-            <div
-              key={part}
-              onTouchStart={() => handleTouchInput(part as InputType)}
-              className={`flex-1 flex items-center justify-center border-4 cursor-pointer ${BODY_PART_CONFIG[part].color.bg} ${BODY_PART_CONFIG[part].color.border}`}
-            >
-              <div className="text-white text-center pointer-events-none">
-                <div className="text-8xl mb-4">{BODY_PART_CONFIG[part].icon}</div>
-                <div className="text-4xl font-bold">{BODY_PART_CONFIG[part].label}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // 청각 훈련 모드 - Traditional
+  // 청각 훈련 모드 (시각 모드와 동일한 UI)
   if (trainingType === 'audio') {
     const shouldShowLeft = trainingRange === 'left' || trainingRange === 'both';
     const shouldShowRight = trainingRange === 'right' || trainingRange === 'both';
