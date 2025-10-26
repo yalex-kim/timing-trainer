@@ -202,12 +202,15 @@ function AssessmentContent() {
   // 입력 처리
   const handleInput = useCallback((inputEvent: InputEvent) => {
     const currentSession = sessionRef.current;
-    if (!currentSession || phase !== 'testing') return;
+    if (!currentSession) return;
+
+    // timestamp를 현재 검사의 startTime 기준으로 재계산
+    const adjustedTimestamp = performance.now() - startTimeRef.current;
 
     setSession((prev) => {
       if (!prev) return prev;
 
-      const inputTimestamp = inputEvent.timestamp;
+      const inputTimestamp = adjustedTimestamp;
       let closestBeatIndex = -1;
       let minDistance = Infinity;
 
@@ -234,15 +237,18 @@ function AssessmentContent() {
 
       const { feedback, isCorrectInput } = TimingEvaluator.evaluateBeat(
         currentBeatData.expectedTime,
-        inputEvent.timestamp,
+        adjustedTimestamp,
         inputEvent.type,
         currentBeatData.expectedInput
       );
 
+      // 조정된 timestamp로 inputEvent 업데이트
+      const adjustedInputEvent = { ...inputEvent, timestamp: adjustedTimestamp };
+
       const updatedBeat: BeatData = {
         ...currentBeatData,
-        actualInput: inputEvent,
-        actualTime: inputEvent.timestamp,
+        actualInput: adjustedInputEvent,
+        actualTime: adjustedTimestamp,
         deviation: feedback.deviation,
         isCorrectInput,
         isWrongInput: !isCorrectInput,
@@ -256,7 +262,7 @@ function AssessmentContent() {
 
       return { ...prev, beats: newBeats };
     });
-  }, [intervalMs, phase]);
+  }, [intervalMs]);
 
   // 입력 핸들러 등록
   useInputHandler({
