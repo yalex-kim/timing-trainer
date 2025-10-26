@@ -13,13 +13,56 @@ import {
 } from '@/types/evaluation';
 import { TimingEvaluator } from '@/utils/evaluator';
 import { formatTime, createNavigationHandlers } from '@/utils/commonHelpers';
-import { BODY_PART_CONFIG } from '@/constants/bodyParts';
 import { useInputHandler } from '@/hooks/useInputHandler';
 import { useAudioBeep } from '@/hooks/useAudioBeep';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import TimingFeedback from '@/components/TimingFeedback';
 import SessionResults from '@/components/SessionResults';
 import { ExpectedInputDisplay } from '@/components/TimingFeedback';
+
+// Body part configuration (inline to avoid module initialization issues)
+const BODY_PART_CONFIG = {
+  'left-hand': {
+    label: '왼손',
+    icon: '✋',
+    color: {
+      bg: 'bg-blue-500',
+      bgActive: 'bg-blue-300',
+      border: 'border-blue-600',
+      hex: '#3B82F6',
+    },
+  },
+  'right-hand': {
+    label: '오른손',
+    icon: '🤚',
+    color: {
+      bg: 'bg-red-500',
+      bgActive: 'bg-red-300',
+      border: 'border-red-600',
+      hex: '#EF4444',
+    },
+  },
+  'left-foot': {
+    label: '왼발',
+    icon: '🦶',
+    color: {
+      bg: 'bg-green-500',
+      bgActive: 'bg-green-300',
+      border: 'border-green-600',
+      hex: '#22C55E',
+    },
+  },
+  'right-foot': {
+    label: '오른발',
+    icon: '🦶',
+    color: {
+      bg: 'bg-yellow-500',
+      bgActive: 'bg-yellow-300',
+      border: 'border-yellow-600',
+      hex: '#EAB308',
+    },
+  },
+} as const;
 
 function TrainingContent() {
   const router = useRouter();
