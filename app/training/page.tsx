@@ -261,25 +261,6 @@ function TrainingContent() {
     enableKeyboard: true,
   });
 
-  // 터치 입력 핸들러
-  const handleTouchInput = useCallback((inputType: InputType) => {
-    if (!session || !isRunning) return;
-
-    const currentBeatData = session.beats[currentBeat];
-    if (!currentBeatData) return;
-
-    // 터치 이벤트 생성
-    const touchEvent: InputEvent = {
-      type: inputType,
-      timestamp: performance.now() - startTimeRef.current,
-      source: 'touch',
-      rawData: { inputType },
-    };
-
-    // 기존 handleInput 로직 재사용
-    handleInput(touchEvent);
-  }, [session, currentBeat, isRunning, handleInput]);
-
   // 비트 진행 (시각/청각 효과 + 비트 카운터)
   useEffect(() => {
     if (!isRunning) return;
@@ -419,7 +400,201 @@ function TrainingContent() {
   const currentBeatData = session?.beats[currentBeat];
   const nextBeatData = session?.beats[currentBeat + 1];
 
-  // 시각 훈련 모드
+  // Layout mode helper for custom sequence
+  const getLayoutMode = (): '2-split' | '4-split' | 'traditional' => {
+    if (customSequence.length === 0) return 'traditional';
+    if (customSequence.length <= 2) return '2-split';
+    return '4-split';
+  };
+
+  // Touch handler for custom sequence
+  const handleTouchInput = useCallback((inputType: InputType) => {
+    if (!session || !isRunning) return;
+
+    const touchEvent: InputEvent = {
+      type: inputType,
+      timestamp: performance.now() - startTimeRef.current,
+      source: 'touch',
+      rawData: { inputType },
+    };
+
+    handleInput(touchEvent);
+  }, [session, isRunning, handleInput]);
+
+  const layoutMode = getLayoutMode();
+
+  // 시각 훈련 모드 - Custom Sequence
+  if (trainingType === 'visual' && layoutMode === '4-split') {
+    return (
+      <div className="fixed inset-0 bg-black">
+        {/* Top info */}
+        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
+          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
+            {bpm} BPM | {formatTime(timeRemaining)}
+          </div>
+          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
+            {currentBeat} / {totalBeats}
+          </div>
+          <button
+            onClick={handleExit}
+            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Real-time feedback */}
+        {currentFeedback && (
+          <TimingFeedback
+            feedback={currentFeedback}
+            currentPoints={currentFeedback.points}
+          />
+        )}
+
+        {/* Expected input display */}
+        {currentBeatData && (
+          <ExpectedInputDisplay
+            expectedInputs={currentBeatData.expectedInput.expectedTypes}
+            nextInputs={nextBeatData?.expectedInput.expectedTypes}
+          />
+        )}
+
+        {/* Visual areas - 4-split grid */}
+        <div className="h-full grid grid-cols-2 grid-rows-2">
+          {/* Top-left: Left hand */}
+          {customSequence.includes('left-hand') && (
+            <div
+              onTouchStart={() => handleTouchInput('left-hand')}
+              className={`flex items-center justify-center border-4 cursor-pointer transition-all duration-100 ${
+                activeBodyParts.has('left-hand')
+                  ? `${BODY_PART_CONFIG['left-hand'].color.bgActive} border-yellow-300`
+                  : `${BODY_PART_CONFIG['left-hand'].color.bg} ${BODY_PART_CONFIG['left-hand'].color.border}`
+              }`}
+            >
+              <div className="text-white text-center pointer-events-none">
+                <div className="text-7xl mb-2">{BODY_PART_CONFIG['left-hand'].icon}</div>
+                <div className="text-3xl font-bold">{BODY_PART_CONFIG['left-hand'].label}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Top-right: Right hand */}
+          {customSequence.includes('right-hand') && (
+            <div
+              onTouchStart={() => handleTouchInput('right-hand')}
+              className={`flex items-center justify-center border-4 cursor-pointer transition-all duration-100 ${
+                activeBodyParts.has('right-hand')
+                  ? `${BODY_PART_CONFIG['right-hand'].color.bgActive} border-yellow-300`
+                  : `${BODY_PART_CONFIG['right-hand'].color.bg} ${BODY_PART_CONFIG['right-hand'].color.border}`
+              }`}
+            >
+              <div className="text-white text-center pointer-events-none">
+                <div className="text-7xl mb-2">{BODY_PART_CONFIG['right-hand'].icon}</div>
+                <div className="text-3xl font-bold">{BODY_PART_CONFIG['right-hand'].label}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Bottom-left: Left foot */}
+          {customSequence.includes('left-foot') && (
+            <div
+              onTouchStart={() => handleTouchInput('left-foot')}
+              className={`flex items-center justify-center border-4 cursor-pointer transition-all duration-100 ${
+                activeBodyParts.has('left-foot')
+                  ? `${BODY_PART_CONFIG['left-foot'].color.bgActive} border-yellow-300`
+                  : `${BODY_PART_CONFIG['left-foot'].color.bg} ${BODY_PART_CONFIG['left-foot'].color.border}`
+              }`}
+            >
+              <div className="text-white text-center pointer-events-none">
+                <div className="text-7xl mb-2">{BODY_PART_CONFIG['left-foot'].icon}</div>
+                <div className="text-3xl font-bold">{BODY_PART_CONFIG['left-foot'].label}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Bottom-right: Right foot */}
+          {customSequence.includes('right-foot') && (
+            <div
+              onTouchStart={() => handleTouchInput('right-foot')}
+              className={`flex items-center justify-center border-4 cursor-pointer transition-all duration-100 ${
+                activeBodyParts.has('right-foot')
+                  ? `${BODY_PART_CONFIG['right-foot'].color.bgActive} border-yellow-300`
+                  : `${BODY_PART_CONFIG['right-foot'].color.bg} ${BODY_PART_CONFIG['right-foot'].color.border}`
+              }`}
+            >
+              <div className="text-white text-center pointer-events-none">
+                <div className="text-7xl mb-2">{BODY_PART_CONFIG['right-foot'].icon}</div>
+                <div className="text-3xl font-bold">{BODY_PART_CONFIG['right-foot'].label}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 시각 훈련 모드 - Custom Sequence 2-split
+  if (trainingType === 'visual' && layoutMode === '2-split') {
+    const isVertical = customSequence.every(p => p.includes('hand')) || customSequence.every(p => p.includes('foot'));
+
+    return (
+      <div className="fixed inset-0 bg-black">
+        {/* Top info */}
+        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
+          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
+            {bpm} BPM | {formatTime(timeRemaining)}
+          </div>
+          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
+            {currentBeat} / {totalBeats}
+          </div>
+          <button
+            onClick={handleExit}
+            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Real-time feedback */}
+        {currentFeedback && (
+          <TimingFeedback
+            feedback={currentFeedback}
+            currentPoints={currentFeedback.points}
+          />
+        )}
+
+        {/* Expected input display */}
+        {currentBeatData && (
+          <ExpectedInputDisplay
+            expectedInputs={currentBeatData.expectedInput.expectedTypes}
+            nextInputs={nextBeatData?.expectedInput.expectedTypes}
+          />
+        )}
+
+        {/* Visual areas - 2-split */}
+        <div className={`h-full ${isVertical ? 'flex' : 'flex flex-col'}`}>
+          {customSequence.map((part) => (
+            <div
+              key={part}
+              onTouchStart={() => handleTouchInput(part as InputType)}
+              className={`flex-1 flex items-center justify-center border-4 cursor-pointer transition-all duration-100 ${
+                activeBodyParts.has(part)
+                  ? `${BODY_PART_CONFIG[part].color.bgActive} border-yellow-300`
+                  : `${BODY_PART_CONFIG[part].color.bg} ${BODY_PART_CONFIG[part].color.border}`
+              }`}
+            >
+              <div className="text-white text-center pointer-events-none">
+                <div className="text-8xl mb-4">{BODY_PART_CONFIG[part].icon}</div>
+                <div className="text-4xl font-bold">{BODY_PART_CONFIG[part].label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // 시각 훈련 모드 - Traditional
   if (trainingType === 'visual') {
     const shouldShowLeft = trainingRange === 'left' || trainingRange === 'both';
     const shouldShowRight = trainingRange === 'right' || trainingRange === 'both';
@@ -520,7 +695,158 @@ function TrainingContent() {
     );
   }
 
-  // 청각 훈련 모드 (시각 모드와 동일한 UI)
+  // 청각 훈련 모드 - Custom Sequence 4-split
+  if (trainingType === 'audio' && layoutMode === '4-split') {
+    return (
+      <div className="fixed inset-0 bg-black">
+        {/* Top info */}
+        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
+          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
+            {bpm} BPM | {formatTime(timeRemaining)}
+          </div>
+          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
+            {currentBeat} / {totalBeats}
+          </div>
+          <button
+            onClick={handleExit}
+            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Real-time feedback */}
+        {currentFeedback && (
+          <TimingFeedback
+            feedback={currentFeedback}
+            currentPoints={currentFeedback.points}
+          />
+        )}
+
+        {/* Expected input display */}
+        {currentBeatData && (
+          <ExpectedInputDisplay
+            expectedInputs={currentBeatData.expectedInput.expectedTypes}
+            nextInputs={nextBeatData?.expectedInput.expectedTypes}
+          />
+        )}
+
+        {/* Audio areas - 4-split grid */}
+        <div className="h-full grid grid-cols-2 grid-rows-2">
+          {/* Top-left: Left hand */}
+          {customSequence.includes('left-hand') && (
+            <div
+              onTouchStart={() => handleTouchInput('left-hand')}
+              className={`flex items-center justify-center border-4 cursor-pointer ${BODY_PART_CONFIG['left-hand'].color.bg} ${BODY_PART_CONFIG['left-hand'].color.border}`}
+            >
+              <div className="text-white text-center pointer-events-none">
+                <div className="text-7xl mb-2">{BODY_PART_CONFIG['left-hand'].icon}</div>
+                <div className="text-3xl font-bold">{BODY_PART_CONFIG['left-hand'].label}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Top-right: Right hand */}
+          {customSequence.includes('right-hand') && (
+            <div
+              onTouchStart={() => handleTouchInput('right-hand')}
+              className={`flex items-center justify-center border-4 cursor-pointer ${BODY_PART_CONFIG['right-hand'].color.bg} ${BODY_PART_CONFIG['right-hand'].color.border}`}
+            >
+              <div className="text-white text-center pointer-events-none">
+                <div className="text-7xl mb-2">{BODY_PART_CONFIG['right-hand'].icon}</div>
+                <div className="text-3xl font-bold">{BODY_PART_CONFIG['right-hand'].label}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Bottom-left: Left foot */}
+          {customSequence.includes('left-foot') && (
+            <div
+              onTouchStart={() => handleTouchInput('left-foot')}
+              className={`flex items-center justify-center border-4 cursor-pointer ${BODY_PART_CONFIG['left-foot'].color.bg} ${BODY_PART_CONFIG['left-foot'].color.border}`}
+            >
+              <div className="text-white text-center pointer-events-none">
+                <div className="text-7xl mb-2">{BODY_PART_CONFIG['left-foot'].icon}</div>
+                <div className="text-3xl font-bold">{BODY_PART_CONFIG['left-foot'].label}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Bottom-right: Right foot */}
+          {customSequence.includes('right-foot') && (
+            <div
+              onTouchStart={() => handleTouchInput('right-foot')}
+              className={`flex items-center justify-center border-4 cursor-pointer ${BODY_PART_CONFIG['right-foot'].color.bg} ${BODY_PART_CONFIG['right-foot'].color.border}`}
+            >
+              <div className="text-white text-center pointer-events-none">
+                <div className="text-7xl mb-2">{BODY_PART_CONFIG['right-foot'].icon}</div>
+                <div className="text-3xl font-bold">{BODY_PART_CONFIG['right-foot'].label}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // 청각 훈련 모드 - Custom Sequence 2-split
+  if (trainingType === 'audio' && layoutMode === '2-split') {
+    const isVertical = customSequence.every(p => p.includes('hand')) || customSequence.every(p => p.includes('foot'));
+
+    return (
+      <div className="fixed inset-0 bg-black">
+        {/* Top info */}
+        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
+          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
+            {bpm} BPM | {formatTime(timeRemaining)}
+          </div>
+          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
+            {currentBeat} / {totalBeats}
+          </div>
+          <button
+            onClick={handleExit}
+            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Real-time feedback */}
+        {currentFeedback && (
+          <TimingFeedback
+            feedback={currentFeedback}
+            currentPoints={currentFeedback.points}
+          />
+        )}
+
+        {/* Expected input display */}
+        {currentBeatData && (
+          <ExpectedInputDisplay
+            expectedInputs={currentBeatData.expectedInput.expectedTypes}
+            nextInputs={nextBeatData?.expectedInput.expectedTypes}
+          />
+        )}
+
+        {/* Audio areas - 2-split */}
+        <div className={`h-full ${isVertical ? 'flex' : 'flex flex-col'}`}>
+          {customSequence.map((part) => (
+            <div
+              key={part}
+              onTouchStart={() => handleTouchInput(part as InputType)}
+              className={`flex-1 flex items-center justify-center border-4 cursor-pointer ${BODY_PART_CONFIG[part].color.bg} ${BODY_PART_CONFIG[part].color.border}`}
+            >
+              <div className="text-white text-center pointer-events-none">
+                <div className="text-8xl mb-4">{BODY_PART_CONFIG[part].icon}</div>
+                <div className="text-4xl font-bold">{BODY_PART_CONFIG[part].label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // 청각 훈련 모드 - Traditional
   if (trainingType === 'audio') {
     const shouldShowLeft = trainingRange === 'left' || trainingRange === 'both';
     const shouldShowRight = trainingRange === 'right' || trainingRange === 'both';
