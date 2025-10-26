@@ -11,6 +11,9 @@ export function useAudioBeep() {
 
   // Initialize AudioContext
   useEffect(() => {
+    // Ensure we're on the client side
+    if (typeof window === 'undefined') return;
+
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
