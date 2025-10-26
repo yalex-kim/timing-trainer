@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { TrainingSettings, DEFAULT_SETTINGS } from '@/types';
+import { TrainingSettings, DEFAULT_SETTINGS, CustomBodyPart } from '@/types';
 import { UserProfile } from '@/types/evaluation';
 import { calculateAge } from '@/utils/evaluator';
+import { getBodyPartLabel, getBodyPartIcon } from '@/utils/bodyPartColors';
 
 export default function Home() {
   const router = useRouter();
@@ -56,6 +57,40 @@ export default function Home() {
     setShowUserForm(true);
   };
 
+  // 커스텀 시퀀스 추가
+  const addToSequence = (part: CustomBodyPart) => {
+    const currentSequence = settings.customSequence || [];
+    if (currentSequence.length >= 4) {
+      alert('최대 4개까지만 선택 가능합니다.');
+      return;
+    }
+    if (currentSequence.includes(part)) {
+      return; // 이미 선택된 항목은 무시
+    }
+    setSettings({
+      ...settings,
+      customSequence: [...currentSequence, part],
+    });
+  };
+
+  // 커스텀 시퀀스에서 제거
+  const removeFromSequence = (index: number) => {
+    const currentSequence = settings.customSequence || [];
+    const newSequence = currentSequence.filter((_, i) => i !== index);
+    setSettings({
+      ...settings,
+      customSequence: newSequence.length > 0 ? newSequence : undefined,
+    });
+  };
+
+  // 커스텀 시퀀스 초기화
+  const clearSequence = () => {
+    setSettings({
+      ...settings,
+      customSequence: undefined,
+    });
+  };
+
   // 훈련/검사 시작
   const handleStart = () => {
     if (!userProfile) {
@@ -73,6 +108,12 @@ export default function Home() {
         bpm: settings.bpm.toString(),
         duration: settings.durationMinutes.toString(),
       });
+
+      // 커스텀 시퀀스가 있으면 추가
+      if (settings.customSequence && settings.customSequence.length > 0) {
+        params.set('customSequence', JSON.stringify(settings.customSequence));
+      }
+
       router.push(`/training?${params.toString()}`);
     }
   };
@@ -335,6 +376,81 @@ export default function Home() {
                 오른쪽
               </button>
             </div>
+          </div>
+
+          {/* 커스텀 시퀀스 선택 */}
+          <div className="border-t-2 border-gray-200 pt-4">
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                커스텀 시퀀스 (선택사항)
+              </label>
+              {settings.customSequence && settings.customSequence.length > 0 && (
+                <button
+                  onClick={clearSequence}
+                  className="text-xs text-red-600 hover:text-red-800 font-medium"
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              최대 4개까지 선택 가능 (중복 불가)
+            </p>
+
+            {/* 신체 부위 선택 버튼 */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {(['left-hand', 'right-hand', 'left-foot', 'right-foot'] as CustomBodyPart[]).map((part) => {
+                const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
+                const isSelected = settings.customSequence?.includes(part);
+                const isDisabled = isSelected;
+
+                return (
+                  <button
+                    key={part}
+                    onClick={() => addToSequence(part)}
+                    disabled={isDisabled}
+                    className={`py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                      isDisabled
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    <span>{getBodyPartIcon(type as 'hand' | 'foot', side)}</span>
+                    <span>{getBodyPartLabel(type as 'hand' | 'foot', side)}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 선택된 시퀀스 표시 */}
+            {settings.customSequence && settings.customSequence.length > 0 && (
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                <div className="text-xs text-gray-600 mb-2 font-medium">선택된 순서:</div>
+                <div className="flex flex-wrap gap-2">
+                  {settings.customSequence.map((part, index) => {
+                    const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
+                    return (
+                      <div key={index} className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 bg-white px-2 py-1 rounded border border-blue-300">
+                          <span className="text-sm">{index + 1}.</span>
+                          <span>{getBodyPartIcon(type as 'hand' | 'foot', side)}</span>
+                          <span className="text-sm font-medium">{getBodyPartLabel(type as 'hand' | 'foot', side)}</span>
+                          <button
+                            onClick={() => removeFromSequence(index)}
+                            className="ml-1 text-red-500 hover:text-red-700 font-bold text-sm"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        {index < settings.customSequence!.length - 1 && (
+                          <span className="text-gray-400">→</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* BPM 설정 */}

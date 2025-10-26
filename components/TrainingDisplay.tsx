@@ -1,5 +1,5 @@
 import React from 'react';
-import { BodyPart, TrainingRange, TrainingType } from '@/types';
+import { BodyPart, TrainingRange, TrainingType, CustomBodyPart } from '@/types';
 import { InputType, BeatData, TimingFeedback as TimingFeedbackType } from '@/types/evaluation';
 import { getBodyPartColors, getBodyPartLabel, getBodyPartIcon } from '@/utils/bodyPartColors';
 import { formatTime } from '@/utils/commonHelpers';
@@ -22,6 +22,7 @@ interface TrainingDisplayProps {
   onRightTouch: (e: React.TouchEvent) => void;
   onExit: () => void;
   title?: string; // Optional title for assessment mode
+  customSequence?: CustomBodyPart[] | null; // 커스텀 시퀀스
 }
 
 type BodyPartType = 'left-hand' | 'right-hand' | 'left-foot' | 'right-foot';
@@ -43,9 +44,16 @@ export function TrainingDisplay({
   onRightTouch,
   onExit,
   title,
+  customSequence,
 }: TrainingDisplayProps) {
   // 각 영역이 현재 세션에서 활성화되어 있는지 확인
   const isBodyPartEnabled = (part: BodyPartType): boolean => {
+    // 커스텀 시퀀스가 있으면 해당 시퀀스에 포함된 신체 부위만 활성화
+    if (customSequence && customSequence.length > 0) {
+      return customSequence.includes(part as CustomBodyPart);
+    }
+
+    // 기존 로직
     const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
 
     // 신체 부위가 맞는지 확인
@@ -63,6 +71,12 @@ export function TrainingDisplay({
     if (trainingType !== 'visual') return false;
     if (!isActive) return false;
 
+    // 커스텀 시퀀스 모드: currentBeatData의 expectedTypes를 확인
+    if (customSequence && customSequence.length > 0 && currentBeatData) {
+      return currentBeatData.expectedInput.expectedTypes.includes(part as InputType);
+    }
+
+    // 기존 로직
     const [side, type] = part.split('-') as ['left' | 'right', 'hand' | 'foot'];
 
     // 신체 부위가 맞는지 확인

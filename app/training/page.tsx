@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { TrainingType, BodyPart, TrainingRange } from '@/types';
+import { TrainingType, BodyPart, TrainingRange, CustomBodyPart } from '@/types';
 import {
   BeatData,
   InputEvent,
@@ -29,8 +29,24 @@ function TrainingContent() {
   const bpm = parseInt(searchParams.get('bpm') || '60');
   const duration = parseInt(searchParams.get('duration') || '1');
 
-  // 훈련 패턴 결정
-  const pattern = PatternGenerator.settingsToPattern(bodyPart, trainingRange);
+  // 커스텀 시퀀스 파싱
+  const customSequenceParam = searchParams.get('customSequence');
+  const customSequence: CustomBodyPart[] | null = useMemo(() => {
+    if (!customSequenceParam) return null;
+    try {
+      const parsed = JSON.parse(customSequenceParam);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+    } catch (error) {
+      console.error('Failed to parse custom sequence:', error);
+      return null;
+    }
+  }, [customSequenceParam]);
+
+  // 훈련 패턴 결정 (커스텀 시퀀스가 있으면 null)
+  const pattern = useMemo(() => {
+    if (customSequence) return null;
+    return PatternGenerator.settingsToPattern(bodyPart, trainingRange);
+  }, [customSequence, bodyPart, trainingRange]);
 
   // 상태 관리
   const [session, setSession] = useState<TrainingSession | null>(null);
@@ -62,12 +78,27 @@ function TrainingContent() {
   // 세션 초기화
   useEffect(() => {
     if (!userProfile) return; // 사용자 프로필 로드 대기
+    if (!customSequence && !pattern) return; // 패턴 또는 커스텀 시퀀스 로드 대기
 
     startTimeRef.current = performance.now();
     const beats: BeatData[] = [];
 
     for (let i = 0; i < totalBeats; i++) {
-      const expectedInput = PatternGenerator.generateExpectedInput(pattern, i);
+      let expectedInput;
+
+      if (customSequence) {
+        // 커스텀 시퀀스 모드
+        const sequenceIndex = i % customSequence.length;
+        const part = customSequence[sequenceIndex];
+        expectedInput = {
+          expectedTypes: [part as InputType],
+          description: part,
+        };
+      } else {
+        // 기존 패턴 모드
+        expectedInput = PatternGenerator.generateExpectedInput(pattern, i);
+      }
+
       beats.push({
         beatNumber: i,
         expectedTime: i * intervalMs,
@@ -93,14 +124,15 @@ function TrainingContent() {
         trainingRange,
         bpm,
         durationMinutes: duration,
-        pattern,
+        pattern: customSequence ? customSequence : pattern,
+        customSequence,
       },
       beats,
     };
 
     setSession(newSession);
     setIsRunning(true);
-  }, [totalBeats, pattern, intervalMs, trainingType, bodyPart, trainingRange, bpm, duration, userProfile]);
+  }, [totalBeats, pattern, customSequence, intervalMs, trainingType, bodyPart, trainingRange, bpm, duration, userProfile]);
 
   // 입력 처리
   const handleInput = useCallback((inputEvent: InputEvent) => {
@@ -354,6 +386,7 @@ function TrainingContent() {
       onLeftTouch={handleLeftTouch}
       onRightTouch={handleRightTouch}
       onExit={handleExit}
+      customSequence={customSequence}
     />
   );
 }
