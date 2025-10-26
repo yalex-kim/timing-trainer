@@ -493,3 +493,90 @@ export const DEFAULT_INPUT_MAPPING: InputMapping = {
     keyboard: ['c', 'C', 'v', 'V'],
   },
 };
+
+// ============================================================================
+// 종합 평가 리포트
+// ============================================================================
+
+export interface ProcessingCapability {
+  taskAverage: number;      // milliseconds
+  percentile: number;       // 0-100
+  level: string;            // "아주못함", "못함", "정상이하", "정상", "정상이상", "잘함", "아주잘함"
+  classLevel: TimingClass;  // 1-7
+}
+
+export interface AttentionMetrics {
+  percentile: number;       // 0-100
+  level: "미달" | "보통" | "우수";
+  standardDeviation: number; // milliseconds
+}
+
+export interface SustainabilityMetrics {
+  errorRate: number;        // percentage (0-100)
+  improvementRate: number;  // percentage (0-100)
+  earlyAverage: number;     // milliseconds
+  lateAverage: number;      // milliseconds
+}
+
+export interface HemisphereBalance {
+  leftBrain: number;        // percentage (0-100)
+  rightBrain: number;       // percentage (0-100)
+  correlation: "높음" | "보통" | "낮음";
+  difference: number;       // percentage
+}
+
+export interface LearningStyle {
+  dominantStyle: "visual" | "auditory" | "balanced";
+  difference: number;       // percentage difference
+  dominantLabel: "시각우성" | "청각우성" | "균형적";
+}
+
+export interface ComprehensiveAssessmentReport {
+  // 환자 정보
+  patientInfo: {
+    name: string;
+    gender: "male" | "female";
+    age: number;
+    testDate: string;
+  };
+
+  // 1. 시청각 학습능력
+  processingCapability: {
+    visual: ProcessingCapability;
+    auditory: ProcessingCapability;
+  };
+
+  // 2. 학습 스타일
+  learningStyle: LearningStyle;
+
+  // 3. 시청각 주의력
+  attention: {
+    visual: AttentionMetrics;
+    auditory: AttentionMetrics;
+  };
+
+  // 4. 뇌 인지속도
+  brainSpeed: {
+    taskAverage: number;      // milliseconds
+    level: "미달" | "보통" | "우수";
+    percentile: number;
+  };
+
+  // 5. 지속성
+  sustainability: {
+    visual: SustainabilityMetrics;
+    auditory: SustainabilityMetrics;
+  };
+
+  // 6. 좌우뇌 균형도
+  hemisphereBalance: HemisphereBalance;
+
+  // 개별 검사 결과 (8개)
+  individualResults: {
+    testName: string;
+    sessionResults: SessionResults;
+  }[];
+
+  // 원본 세션 데이터
+  sessions: TrainingSession[];
+}

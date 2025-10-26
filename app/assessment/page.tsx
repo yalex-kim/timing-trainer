@@ -17,6 +17,8 @@ import { useInputHandler } from '@/hooks/useInputHandler';
 import TimingFeedback from '@/components/TimingFeedback';
 import SessionResults from '@/components/SessionResults';
 import { ExpectedInputDisplay } from '@/components/TimingFeedback';
+import ComprehensiveAssessmentReport from '@/components/ComprehensiveAssessmentReport';
+import { generateComprehensiveReport } from '@/utils/assessmentReport';
 
 // 검사 순서 정의
 interface AssessmentTest {
@@ -67,6 +69,7 @@ function AssessmentContent() {
 
   // 모든 검사 결과 저장
   const [allResults, setAllResults] = useState<SessionResultsType[]>([]);
+  const [completedSessions, setCompletedSessions] = useState<TrainingSession[]>([]);
 
   const intervalMs = 60000 / BPM;
   const totalBeats = Math.floor((DURATION_SECONDS * 1000) / intervalMs);
@@ -373,7 +376,15 @@ function AssessmentContent() {
     );
 
     console.log('Results:', results);
+
+    // Store both results and completed session with results attached
+    const completedSession: TrainingSession = {
+      ...currentSession,
+      results,
+    };
+
     setAllResults((prev) => [...prev, results]);
+    setCompletedSessions((prev) => [...prev, completedSession]);
     setSession(null);
 
     // 다음 검사가 있으면 대기 상태, 없으면 완료
@@ -451,75 +462,92 @@ function AssessmentContent() {
   }
 
   // 완료 화면 (종합 결과)
-  if (phase === 'complete' && allResults.length > 0) {
-    // 전체 평균 계산
-    const totalTaskAverage = allResults.reduce((sum, r) => sum + r.taskAverage, 0) / allResults.length;
+  if (phase === 'complete' && completedSessions.length === 8) {
+    try {
+      const comprehensiveReport = generateComprehensiveReport(completedSessions);
 
-    return (
-      <div className="fixed inset-0 bg-black overflow-y-auto">
-        <div className="min-h-screen flex items-start justify-center">
-          <div className="bg-white rounded-lg shadow-2xl p-8 m-8 max-w-4xl w-full">
-            <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
-              검사 완료
-            </h1>
+      return (
+        <ComprehensiveAssessmentReport
+          report={comprehensiveReport}
+          onClose={handleExit}
+        />
+      );
+    } catch (error) {
+      console.error('Failed to generate comprehensive report:', error);
 
-            {/* 종합 결과 */}
-            <div className="mb-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-              <h2 className="text-2xl font-bold text-green-800 mb-4">종합 결과</h2>
-              <div className="text-center">
-                <div className="text-sm text-gray-600 mb-2">전체 평균 Task Average</div>
-                <div className="text-5xl font-bold text-green-600 mb-2">
-                  {totalTaskAverage.toFixed(1)}ms
+      // Fallback to simple results view if report generation fails
+      const totalTaskAverage = allResults.reduce((sum, r) => sum + r.taskAverage, 0) / allResults.length;
+
+      return (
+        <div className="fixed inset-0 bg-black overflow-y-auto">
+          <div className="min-h-screen flex items-start justify-center">
+            <div className="bg-white rounded-lg shadow-2xl p-8 m-8 max-w-4xl w-full">
+              <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
+                검사 완료
+              </h1>
+
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-600">종합 리포트 생성 실패: {(error as Error).message}</p>
+              </div>
+
+              {/* 종합 결과 */}
+              <div className="mb-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                <h2 className="text-2xl font-bold text-green-800 mb-4">종합 결과</h2>
+                <div className="text-center">
+                  <div className="text-sm text-gray-600 mb-2">전체 평균 Task Average</div>
+                  <div className="text-5xl font-bold text-green-600 mb-2">
+                    {totalTaskAverage.toFixed(1)}ms
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* 개별 검사 결과 */}
-            <div className="space-y-4 mb-8">
-              <h2 className="text-xl font-bold text-gray-800">개별 검사 결과</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {ASSESSMENT_SEQUENCE.map((test, index) => {
-                  const result = allResults[index];
-                  if (!result) return null;
+              {/* 개별 검사 결과 */}
+              <div className="space-y-4 mb-8">
+                <h2 className="text-xl font-bold text-gray-800">개별 검사 결과</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {ASSESSMENT_SEQUENCE.map((test, index) => {
+                    const result = allResults[index];
+                    if (!result) return null;
 
-                  return (
-                    <div key={test.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <div className="font-bold text-gray-800 mb-2">{test.name}</div>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <div className="text-gray-600">Task Average</div>
-                          <div className="font-bold text-lg">{result.taskAverage.toFixed(1)}ms</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-600">Class</div>
-                          <div className="font-bold text-lg">Class {result.timingClass}</div>
+                    return (
+                      <div key={test.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="font-bold text-gray-800 mb-2">{test.name}</div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <div className="text-gray-600">Task Average</div>
+                            <div className="font-bold text-lg">{result.taskAverage.toFixed(1)}ms</div>
+                          </div>
+                          <div>
+                            <div className="text-gray-600">Class</div>
+                            <div className="font-bold text-lg">Class {result.timingClass}</div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
 
-            {/* 버튼 */}
-            <div className="flex gap-4">
-              <button
-                onClick={handleRestart}
-                className="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-lg font-bold text-lg transition-colors"
-              >
-                다시 검사
-              </button>
-              <button
-                onClick={handleExit}
-                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-bold text-lg transition-colors"
-              >
-                홈으로
-              </button>
+              {/* 버튼 */}
+              <div className="flex gap-4">
+                <button
+                  onClick={handleRestart}
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-lg font-bold text-lg transition-colors"
+                >
+                  다시 검사
+                </button>
+                <button
+                  onClick={handleExit}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-bold text-lg transition-colors"
+                >
+                  홈으로
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   // 준비 화면
