@@ -10,17 +10,15 @@ import {
   TrainingSession,
   SessionResults as SessionResultsType,
   TimingFeedback as TimingFeedbackType,
+  UserProfile,
 } from '@/types/evaluation';
-import { TimingEvaluator } from '@/utils/evaluator';
-import { formatTime, createNavigationHandlers } from '@/utils/commonHelpers';
+import { PatternGenerator, TimingEvaluator, calculateAge } from '@/utils/evaluator';
 import { useInputHandler } from '@/hooks/useInputHandler';
-import { useAudioBeep } from '@/hooks/useAudioBeep';
-import { useUserProfile } from '@/hooks/useUserProfile';
 import TimingFeedback from '@/components/TimingFeedback';
 import SessionResults from '@/components/SessionResults';
 import { ExpectedInputDisplay } from '@/components/TimingFeedback';
 
-// Body part configuration (inline to avoid module initialization issues)
+// Body part configuration
 const BODY_PART_CONFIG = {
   'left-hand': {
     label: '왼손',
@@ -29,8 +27,7 @@ const BODY_PART_CONFIG = {
       bg: 'bg-blue-500',
       bgActive: 'bg-blue-300',
       border: 'border-blue-600',
-      hex: '#3B82F6',
-    },
+    }
   },
   'right-hand': {
     label: '오른손',
@@ -39,8 +36,7 @@ const BODY_PART_CONFIG = {
       bg: 'bg-red-500',
       bgActive: 'bg-red-300',
       border: 'border-red-600',
-      hex: '#EF4444',
-    },
+    }
   },
   'left-foot': {
     label: '왼발',
@@ -49,8 +45,7 @@ const BODY_PART_CONFIG = {
       bg: 'bg-green-500',
       bgActive: 'bg-green-300',
       border: 'border-green-600',
-      hex: '#22C55E',
-    },
+    }
   },
   'right-foot': {
     label: '오른발',
@@ -59,10 +54,9 @@ const BODY_PART_CONFIG = {
       bg: 'bg-yellow-500',
       bgActive: 'bg-yellow-300',
       border: 'border-yellow-600',
-      hex: '#EAB308',
-    },
+    }
   },
-} as const;
+};
 
 function TrainingContent() {
   const router = useRouter();
@@ -88,15 +82,14 @@ function TrainingContent() {
   // Visual training state
   const [activeBodyParts, setActiveBodyParts] = useState<Set<CustomBodyPart>>(new Set());
 
-  // Custom hooks
-  const { userProfile } = useUserProfile();
-  const { playBeep } = useAudioBeep();
-  const { handleExit, handleRestart } = createNavigationHandlers(router);
+  // User profile
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   const intervalMs = 60000 / bpm;
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const currentBeatRef = useRef<number>(0);
   const customSequenceRef = useRef<CustomBodyPart[]>(customSequence);
 
@@ -112,6 +105,52 @@ function TrainingContent() {
   useEffect(() => {
     customSequenceRef.current = customSequence;
   }, [customSequence]);
+
+  // Load user profile
+  useEffect(() => {
+    const stored = localStorage.getItem('userProfile');
+    if (stored) {
+      const profile = JSON.parse(stored) as UserProfile;
+      profile.age = calculateAge(profile.birthDate);
+      setUserProfile(profile);
+    } else {
+      alert('사용자 정보를 먼저 입력해주세요.');
+      router.push('/');
+    }
+  }, [router]);
+
+  // AudioContext initialization
+  useEffect(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return () => {
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
+  }, []);
+
+  // Audio beep
+  const playBeep = useCallback(() => {
+    if (!audioContextRef.current) return;
+
+    const audioContext = audioContextRef.current;
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.frequency.value = 1200;
+    oscillator.type = 'sine';
+
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.1);
+  }, []);
 
   // Initialize session
   useEffect(() => {
@@ -349,6 +388,21 @@ function TrainingContent() {
 
     setShowResults(true);
   }, []);
+
+  // Time formatting
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleExit = () => {
+    router.push('/');
+  };
+
+  const handleRestart = () => {
+    window.location.reload();
+  };
 
   // Results screen
   if (showResults && session?.results) {
