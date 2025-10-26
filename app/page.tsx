@@ -2,37 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { TrainingSettings, DEFAULT_SETTINGS, CustomBodyPart } from '@/types';
+import { TrainingSettings, DEFAULT_SETTINGS } from '@/types';
 import { UserProfile } from '@/types/evaluation';
 import { calculateAge } from '@/utils/evaluator';
-
-// Body part helper functions (inline to avoid module initialization issues)
-const getBodyPartLabel = (part: CustomBodyPart): string => {
-  switch (part) {
-    case 'left-hand': return '왼손';
-    case 'right-hand': return '오른손';
-    case 'left-foot': return '왼발';
-    case 'right-foot': return '오른발';
-  }
-};
-
-const getBodyPartColor = (part: CustomBodyPart): string => {
-  switch (part) {
-    case 'left-hand': return 'bg-blue-500';
-    case 'right-hand': return 'bg-red-500';
-    case 'left-foot': return 'bg-green-500';
-    case 'right-foot': return 'bg-yellow-500';
-  }
-};
-
-const getBodyPartIcon = (part: CustomBodyPart): string => {
-  switch (part) {
-    case 'left-hand': return '✋';
-    case 'right-hand': return '🤚';
-    case 'left-foot': return '🦶';
-    case 'right-foot': return '🦶';
-  }
-};
 
 export default function Home() {
   const router = useRouter();
@@ -101,50 +73,8 @@ export default function Home() {
         bpm: settings.bpm.toString(),
         duration: settings.durationMinutes.toString(),
       });
-
-      // Add custom sequence if defined
-      if (settings.customSequence && settings.customSequence.length > 0) {
-        params.set('customSequence', JSON.stringify(settings.customSequence));
-      }
-
       router.push(`/training?${params.toString()}`);
     }
-  };
-
-  // Custom sequence helpers
-  const toggleBodyPart = (part: CustomBodyPart) => {
-    const current = settings.customSequence || [];
-    const exists = current.includes(part);
-
-    if (exists) {
-      // Remove from sequence
-      setSettings({
-        ...settings,
-        customSequence: current.filter(p => p !== part)
-      });
-    } else {
-      // Add to sequence
-      setSettings({
-        ...settings,
-        customSequence: [...current, part]
-      });
-    }
-  };
-
-  const moveSequenceItem = (index: number, direction: 'up' | 'down') => {
-    const sequence = [...(settings.customSequence || [])];
-    if (direction === 'up' && index > 0) {
-      [sequence[index - 1], sequence[index]] = [sequence[index], sequence[index - 1]];
-    } else if (direction === 'down' && index < sequence.length - 1) {
-      [sequence[index + 1], sequence[index]] = [sequence[index], sequence[index + 1]];
-    }
-    setSettings({ ...settings, customSequence: sequence });
-  };
-
-  const removeFromSequence = (index: number) => {
-    const sequence = [...(settings.customSequence || [])];
-    sequence.splice(index, 1);
-    setSettings({ ...settings, customSequence: sequence });
   };
 
   // 사용자 정보 입력 화면
@@ -339,60 +269,72 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Custom Sequence Selection */}
+          {/* 신체 부위 선택 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              훈련 순서 선택
+              신체 부위
             </label>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              {(['left-hand', 'right-hand', 'left-foot', 'right-foot'] as CustomBodyPart[]).map((part) => (
-                <button
-                  key={part}
-                  onClick={() => toggleBodyPart(part)}
-                  className={`py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-                    (settings.customSequence || []).includes(part)
-                      ? `${getBodyPartColor(part)} text-white`
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  <span>{getBodyPartIcon(part)}</span>
-                  <span>{getBodyPartLabel(part)}</span>
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setSettings({ ...settings, bodyPart: 'hand' })}
+                className={`py-3 px-4 rounded-lg font-medium transition-colors ${
+                  settings.bodyPart === 'hand'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                손
+              </button>
+              <button
+                onClick={() => setSettings({ ...settings, bodyPart: 'foot' })}
+                className={`py-3 px-4 rounded-lg font-medium transition-colors ${
+                  settings.bodyPart === 'foot'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                발
+              </button>
             </div>
+          </div>
 
-            {/* Sequence Display */}
-            {settings.customSequence && settings.customSequence.length > 0 && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <div className="text-xs font-medium text-gray-600 mb-2">순서 (클릭하여 제거)</div>
-                <div className="flex flex-wrap gap-2">
-                  {settings.customSequence.map((part, index) => (
-                    <div key={index} className="flex items-center gap-1">
-                      <button
-                        onClick={() => removeFromSequence(index)}
-                        className={`${getBodyPartColor(part)} text-white px-3 py-1 rounded-lg text-sm font-medium hover:opacity-80 transition-opacity flex items-center gap-1`}
-                      >
-                        <span>{getBodyPartIcon(part)}</span>
-                        <span>{getBodyPartLabel(part)}</span>
-                        <span className="ml-1">×</span>
-                      </button>
-                      {index < settings.customSequence.length - 1 && (
-                        <span className="text-gray-400">→</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div className="text-xs text-gray-500 mt-2">
-                  이 순서가 반복됩니다
-                </div>
-              </div>
-            )}
-
-            {(!settings.customSequence || settings.customSequence.length === 0) && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-700">
-                최소 1개 이상의 신체 부위를 선택해주세요
-              </div>
-            )}
+          {/* 훈련 범위 선택 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              훈련 범위
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setSettings({ ...settings, trainingRange: 'left' })}
+                className={`py-3 px-4 rounded-lg font-medium transition-colors ${
+                  settings.trainingRange === 'left'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                왼쪽
+              </button>
+              <button
+                onClick={() => setSettings({ ...settings, trainingRange: 'both' })}
+                className={`py-3 px-4 rounded-lg font-medium transition-colors ${
+                  settings.trainingRange === 'both'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                양쪽
+              </button>
+              <button
+                onClick={() => setSettings({ ...settings, trainingRange: 'right' })}
+                className={`py-3 px-4 rounded-lg font-medium transition-colors ${
+                  settings.trainingRange === 'right'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                오른쪽
+              </button>
+            </div>
           </div>
 
           {/* BPM 설정 */}
@@ -453,11 +395,8 @@ export default function Home() {
           {mode && (
             <button
               onClick={handleStart}
-              disabled={mode === 'training' && (!settings.customSequence || settings.customSequence.length === 0)}
               className={`w-full text-white py-4 px-6 rounded-lg font-bold text-lg transition-all shadow-lg hover:shadow-xl ${
-                mode === 'training' && (!settings.customSequence || settings.customSequence.length === 0)
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : mode === 'training'
+                mode === 'training'
                   ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
                   : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
               }`}
