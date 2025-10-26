@@ -101,6 +101,12 @@ export default function Home() {
     if (mode === 'assessment') {
       router.push('/assessment');
     } else {
+      // 훈련 모드: 커스텀 시퀀스가 필수
+      if (!settings.customSequence || settings.customSequence.length === 0) {
+        alert('훈련할 순서를 선택해주세요. (최소 1개 이상)');
+        return;
+      }
+
       const params = new URLSearchParams({
         trainingType: settings.trainingType,
         bodyPart: settings.bodyPart,
@@ -109,10 +115,8 @@ export default function Home() {
         duration: settings.durationMinutes.toString(),
       });
 
-      // 커스텀 시퀀스가 있으면 추가
-      if (settings.customSequence && settings.customSequence.length > 0) {
-        params.set('customSequence', JSON.stringify(settings.customSequence));
-      }
+      // 커스텀 시퀀스 추가
+      params.set('customSequence', JSON.stringify(settings.customSequence));
 
       router.push(`/training?${params.toString()}`);
     }
@@ -310,79 +314,11 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 신체 부위 선택 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              신체 부위
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setSettings({ ...settings, bodyPart: 'hand' })}
-                className={`py-3 px-4 rounded-lg font-medium transition-colors ${
-                  settings.bodyPart === 'hand'
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                손
-              </button>
-              <button
-                onClick={() => setSettings({ ...settings, bodyPart: 'foot' })}
-                className={`py-3 px-4 rounded-lg font-medium transition-colors ${
-                  settings.bodyPart === 'foot'
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                발
-              </button>
-            </div>
-          </div>
-
-          {/* 훈련 범위 선택 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              훈련 범위
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => setSettings({ ...settings, trainingRange: 'left' })}
-                className={`py-3 px-4 rounded-lg font-medium transition-colors ${
-                  settings.trainingRange === 'left'
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                왼쪽
-              </button>
-              <button
-                onClick={() => setSettings({ ...settings, trainingRange: 'both' })}
-                className={`py-3 px-4 rounded-lg font-medium transition-colors ${
-                  settings.trainingRange === 'both'
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                양쪽
-              </button>
-              <button
-                onClick={() => setSettings({ ...settings, trainingRange: 'right' })}
-                className={`py-3 px-4 rounded-lg font-medium transition-colors ${
-                  settings.trainingRange === 'right'
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                오른쪽
-              </button>
-            </div>
-          </div>
-
           {/* 커스텀 시퀀스 선택 */}
           <div className="border-t-2 border-gray-200 pt-4">
             <div className="flex justify-between items-center mb-2">
               <label className="block text-sm font-medium text-gray-700">
-                커스텀 시퀀스 (선택사항)
+                훈련 순서 선택
               </label>
               {settings.customSequence && settings.customSequence.length > 0 && (
                 <button
@@ -511,10 +447,13 @@ export default function Home() {
           {mode && (
             <button
               onClick={handleStart}
-              className={`w-full text-white py-4 px-6 rounded-lg font-bold text-lg transition-all shadow-lg hover:shadow-xl ${
-                mode === 'training'
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600'
-                  : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+              disabled={mode === 'training' && (!settings.customSequence || settings.customSequence.length === 0)}
+              className={`w-full text-white py-4 px-6 rounded-lg font-bold text-lg transition-all shadow-lg ${
+                mode === 'training' && (!settings.customSequence || settings.customSequence.length === 0)
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : mode === 'training'
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 hover:shadow-xl'
+                  : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 hover:shadow-xl'
               }`}
             >
               {mode === 'training' ? '훈련 시작' : '검사 시작'}
