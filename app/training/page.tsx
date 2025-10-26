@@ -10,10 +10,12 @@ import {
   TrainingSession,
   SessionResults as SessionResultsType,
   TimingFeedback as TimingFeedbackType,
-  UserProfile,
 } from '@/types/evaluation';
-import { PatternGenerator, TimingEvaluator, calculateAge } from '@/utils/evaluator';
+import { PatternGenerator, TimingEvaluator } from '@/utils/evaluator';
+import { formatTime, createNavigationHandlers } from '@/utils/commonHelpers';
 import { useInputHandler } from '@/hooks/useInputHandler';
+import { useAudioBeep } from '@/hooks/useAudioBeep';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import TimingFeedback from '@/components/TimingFeedback';
 import SessionResults from '@/components/SessionResults';
 import { ExpectedInputDisplay } from '@/components/TimingFeedback';
@@ -43,66 +45,20 @@ function TrainingContent() {
   const [currentSide, setCurrentSide] = useState<'left' | 'right'>('left');
   const [isActive, setIsActive] = useState(false);
 
-  // 사용자 프로필 로드
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  // Custom hooks
+  const { userProfile } = useUserProfile();
+  const { playBeep } = useAudioBeep();
+  const { handleExit, handleRestart } = createNavigationHandlers(router);
 
   const intervalMs = 60000 / bpm;
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
 
   // sessionRef 동기화
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
-
-  // AudioContext 초기화 (재사용)
-  useEffect(() => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
-  }, []);
-
-  // 사용자 프로필 로드
-  useEffect(() => {
-    const stored = localStorage.getItem('userProfile');
-    if (stored) {
-      const profile = JSON.parse(stored) as UserProfile;
-      profile.age = calculateAge(profile.birthDate);
-      setUserProfile(profile);
-    } else {
-      // 사용자 정보가 없으면 메인으로 리다이렉트
-      alert('사용자 정보를 먼저 입력해주세요.');
-      router.push('/');
-    }
-  }, [router]);
-
-  // 오디오 비프음
-  const playBeep = useCallback(() => {
-    if (!audioContextRef.current) return;
-
-    const audioContext = audioContextRef.current;
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    oscillator.frequency.value = 1200;
-    oscillator.type = 'sine';
-
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.1);
-  }, []);
 
   // 세션 초기화
   useEffect(() => {
@@ -352,21 +308,6 @@ function TrainingContent() {
     console.log('Total beats:', currentSession.beats.length);
     console.log('Beats with input:', currentSession.beats.filter(b => b.actualInput !== null).length);
   }, []);
-
-  // 시간 포맷팅
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handleExit = () => {
-    router.push('/');
-  };
-
-  const handleRestart = () => {
-    window.location.reload();
-  };
 
   // 결과 화면
   if (showResults && session?.results) {
