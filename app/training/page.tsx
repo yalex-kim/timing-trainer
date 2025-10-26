@@ -77,12 +77,20 @@ function TrainingContent() {
 
   // Parse custom sequence (memoized to prevent re-parsing on every render)
   const customSequence: CustomBodyPart[] = useMemo(() => {
-    return customSequenceParam ? JSON.parse(customSequenceParam) : [];
+    if (!customSequenceParam) return [];
+    try {
+      return JSON.parse(customSequenceParam);
+    } catch (error) {
+      console.error('Failed to parse custom sequence:', error);
+      return [];
+    }
   }, [customSequenceParam]);
 
   // 훈련 패턴 결정 (memoized to prevent re-calculation on every render)
   const pattern = useMemo(() => {
-    return customSequence.length > 0 ? null : PatternGenerator.settingsToPattern(bodyPart, trainingRange);
+    if (customSequence.length > 0) return null;
+    if (!bodyPart || !trainingRange) return null;
+    return PatternGenerator.settingsToPattern(bodyPart, trainingRange);
   }, [customSequence.length, bodyPart, trainingRange]);
 
   // 상태 관리
@@ -144,9 +152,15 @@ function TrainingContent() {
         const bodyPart = customSequence[sequenceIndex];
         const expectedTypes: InputType[] = [bodyPart as InputType];
 
+        const config = BODY_PART_CONFIG[bodyPart];
+        if (!config) {
+          console.error('Invalid body part in custom sequence:', bodyPart);
+          continue; // Skip this beat if invalid
+        }
+
         expectedInput = {
           expectedTypes,
-          description: BODY_PART_CONFIG[bodyPart].label,
+          description: config.label,
         };
       } else {
         // Traditional pattern mode
@@ -577,7 +591,7 @@ function TrainingContent() {
 
         {/* Visual areas - 2-split */}
         <div className={`h-full ${isVertical ? 'flex' : 'flex flex-col'}`}>
-          {customSequence.map((part) => (
+          {customSequence.filter(part => BODY_PART_CONFIG[part]).map((part) => (
             <div
               key={part}
               onTouchStart={() => handleTouchInput(part as InputType)}
@@ -833,7 +847,7 @@ function TrainingContent() {
 
         {/* Audio areas - 2-split */}
         <div className={`h-full ${isVertical ? 'flex' : 'flex flex-col'}`}>
-          {customSequence.map((part) => (
+          {customSequence.filter(part => BODY_PART_CONFIG[part]).map((part) => (
             <div
               key={part}
               onTouchStart={() => handleTouchInput(part as InputType)}

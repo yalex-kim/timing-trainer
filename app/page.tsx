@@ -13,6 +13,7 @@ const getBodyPartLabel = (part: CustomBodyPart): string => {
     case 'right-hand': return '오른손';
     case 'left-foot': return '왼발';
     case 'right-foot': return '오른발';
+    default: return '';
   }
 };
 
@@ -22,6 +23,7 @@ const getBodyPartColor = (part: CustomBodyPart): string => {
     case 'right-hand': return 'bg-red-500';
     case 'left-foot': return 'bg-green-500';
     case 'right-foot': return 'bg-yellow-500';
+    default: return 'bg-gray-500';
   }
 };
 
@@ -31,6 +33,7 @@ const getBodyPartIcon = (part: CustomBodyPart): string => {
     case 'right-hand': return '🤚';
     case 'left-foot': return '🦶';
     case 'right-foot': return '🦶';
+    default: return '❓';
   }
 };
 
