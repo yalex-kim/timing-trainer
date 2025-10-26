@@ -14,10 +14,17 @@ export default function Home() {
   const [mode, setMode] = useState<'training' | 'assessment' | null>(null);
   const [settings, setSettings] = useState<TrainingSettings>(DEFAULT_SETTINGS);
 
+  // 기본 생년월일 계산 (현 시점 기준 6년 전)
+  const getDefaultBirthDate = () => {
+    const today = new Date();
+    const sixYearsAgo = new Date(today.getFullYear() - 6, today.getMonth(), today.getDate());
+    return sixYearsAgo.toISOString().split('T')[0]; // YYYY-MM-DD 형식
+  };
+
   // 폼 입력 상태
   const [formData, setFormData] = useState({
     name: '',
-    birthDate: '',
+    birthDate: getDefaultBirthDate(),
     gender: 'male' as 'male' | 'female',
   });
 
