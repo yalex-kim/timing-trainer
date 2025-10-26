@@ -517,15 +517,23 @@ function AssessmentContent() {
               각 검사는 <span className="font-bold">60 BPM</span>으로 <span className="font-bold">40초</span>간 진행됩니다.
             </p>
           </div>
-          <button
-            onClick={() => {
-              setCountdown(5);
-              setPhase('countdown');
-            }}
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-4 px-6 rounded-lg font-bold text-xl transition-all shadow-lg hover:shadow-xl"
-          >
-            검사 시작
-          </button>
+          <div className="space-y-3">
+            <button
+              onClick={() => {
+                setCountdown(5);
+                setPhase('countdown');
+              }}
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white py-4 px-6 rounded-lg font-bold text-xl transition-all shadow-lg hover:shadow-xl"
+            >
+              검사 시작
+            </button>
+            <button
+              onClick={handleExit}
+              className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-medium transition-colors"
+            >
+              홈으로 돌아가기
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -543,12 +551,20 @@ function AssessmentContent() {
           <p className="text-xl text-gray-600 mb-8">
             다음 검사: <span className="font-bold text-blue-600">{ASSESSMENT_SEQUENCE[currentTestIndex + 1]?.name}</span>
           </p>
-          <button
-            onClick={handleNextTest}
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white py-4 px-8 rounded-lg font-bold text-xl transition-all shadow-lg hover:shadow-xl mb-4"
-          >
-            다음 검사 시작
-          </button>
+          <div className="space-y-3 mb-4">
+            <button
+              onClick={handleNextTest}
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white py-4 px-8 rounded-lg font-bold text-xl transition-all shadow-lg hover:shadow-xl"
+            >
+              다음 검사 시작
+            </button>
+            <button
+              onClick={handleExit}
+              className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-medium transition-colors"
+            >
+              검사 중단하고 홈으로
+            </button>
+          </div>
           <p className="text-sm text-gray-400">
             (또는 아무 키나 눌러주세요)
           </p>
@@ -616,6 +632,12 @@ function AssessmentContent() {
           <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
             {currentBeat} / {totalBeats}
           </div>
+          <button
+            onClick={handleExit}
+            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
+          >
+            ✕
+          </button>
         </div>
 
         {currentFeedback && (
@@ -709,6 +731,12 @@ function AssessmentContent() {
           <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
             {currentBeat} / {totalBeats}
           </div>
+          <button
+            onClick={handleExit}
+            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
+          >
+            ✕
+          </button>
         </div>
 
         {currentFeedback && (
