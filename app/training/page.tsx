@@ -90,11 +90,21 @@ function TrainingContent() {
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const currentBeatRef = useRef<number>(0);
+  const customSequenceRef = useRef<CustomBodyPart[]>(customSequence);
 
-  // Sync sessionRef
+  // Sync refs
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
+
+  useEffect(() => {
+    currentBeatRef.current = currentBeat;
+  }, [currentBeat]);
+
+  useEffect(() => {
+    customSequenceRef.current = customSequence;
+  }, [customSequence]);
 
   // Load user profile
   useEffect(() => {
@@ -279,6 +289,9 @@ function TrainingContent() {
     if (!isRunning) return;
 
     const beatTimer = setInterval(() => {
+      const currentBeatValue = currentBeatRef.current;
+      const sequence = customSequenceRef.current;
+
       // Audio effect
       if (trainingType === 'audio') {
         playBeep();
@@ -286,8 +299,8 @@ function TrainingContent() {
 
       // Visual effect
       if (trainingType === 'visual') {
-        const sequenceIndex = currentBeat % customSequence.length;
-        const activePart = customSequence[sequenceIndex];
+        const sequenceIndex = currentBeatValue % sequence.length;
+        const activePart = sequence[sequenceIndex];
         setActiveBodyParts(new Set([activePart]));
         setCurrentSequenceIndex(sequenceIndex);
 
@@ -325,7 +338,7 @@ function TrainingContent() {
     }, intervalMs);
 
     return () => clearInterval(beatTimer);
-  }, [isRunning, intervalMs, totalBeats, trainingType, currentBeat, customSequence, playBeep]);
+  }, [isRunning, intervalMs, totalBeats, trainingType, playBeep, finishSession]);
 
   // Timer
   useEffect(() => {
