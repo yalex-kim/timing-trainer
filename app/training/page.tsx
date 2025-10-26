@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TrainingType, BodyPart, TrainingRange, CustomBodyPart } from '@/types';
 import {
@@ -75,11 +75,15 @@ function TrainingContent() {
   const duration = parseInt(searchParams.get('duration') || '1');
   const customSequenceParam = searchParams.get('customSequence');
 
-  // Parse custom sequence
-  const customSequence: CustomBodyPart[] = customSequenceParam ? JSON.parse(customSequenceParam) : [];
+  // Parse custom sequence (memoized to prevent re-parsing on every render)
+  const customSequence: CustomBodyPart[] = useMemo(() => {
+    return customSequenceParam ? JSON.parse(customSequenceParam) : [];
+  }, [customSequenceParam]);
 
-  // 훈련 패턴 결정
-  const pattern = customSequence.length > 0 ? null : PatternGenerator.settingsToPattern(bodyPart, trainingRange);
+  // 훈련 패턴 결정 (memoized to prevent re-calculation on every render)
+  const pattern = useMemo(() => {
+    return customSequence.length > 0 ? null : PatternGenerator.settingsToPattern(bodyPart, trainingRange);
+  }, [customSequence.length, bodyPart, trainingRange]);
 
   // 상태 관리
   const [session, setSession] = useState<TrainingSession | null>(null);
