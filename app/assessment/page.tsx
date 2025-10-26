@@ -605,6 +605,12 @@ function AssessmentContent() {
     const leftActive = isActive && (currentTest.trainingRange === 'left' || (currentTest.trainingRange === 'both' && currentSide === 'left'));
     const rightActive = isActive && (currentTest.trainingRange === 'right' || (currentTest.trainingRange === 'both' && currentSide === 'right'));
 
+    // 색상 결정: 왼손=파랑, 오른손=빨강, 왼발=초록, 오른발=노랑
+    const leftColorActive = currentTest.bodyPart === 'hand' ? 'bg-blue-400' : 'bg-green-400';
+    const leftColorInactive = currentTest.bodyPart === 'hand' ? 'bg-blue-700' : 'bg-green-700';
+    const rightColorActive = currentTest.bodyPart === 'hand' ? 'bg-red-400' : 'bg-yellow-400';
+    const rightColorInactive = currentTest.bodyPart === 'hand' ? 'bg-red-700' : 'bg-yellow-700';
+
     const handleLeftTouch = (e: React.TouchEvent) => {
       e.preventDefault();
       const inputType = currentTest.bodyPart === 'hand' ? 'left-hand' : 'left-foot';
@@ -659,13 +665,13 @@ function AssessmentContent() {
             <div
               onTouchStart={handleLeftTouch}
               className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 cursor-pointer ${
-                leftActive ? 'bg-green-400 border-yellow-300' : 'bg-green-700 border-white'
+                leftActive ? `${leftColorActive} border-yellow-300` : `${leftColorInactive} border-white`
               }`}
             >
               {currentTest.trainingRange === 'left' && (
                 <div className="text-white text-9xl pointer-events-none">
                   {currentTest.bodyPart === 'hand' ? '✋' : '🦶'}
-                  <div className="text-4xl mt-4">왼쪽</div>
+                  <div className="text-4xl mt-4">{currentTest.bodyPart === 'hand' ? '왼손' : '왼발'}</div>
                 </div>
               )}
             </div>
@@ -684,13 +690,13 @@ function AssessmentContent() {
             <div
               onTouchStart={handleRightTouch}
               className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 cursor-pointer ${
-                rightActive ? 'bg-red-400 border-yellow-300' : 'bg-red-700 border-white'
+                rightActive ? `${rightColorActive} border-yellow-300` : `${rightColorInactive} border-white`
               }`}
             >
               {currentTest.trainingRange === 'right' && (
                 <div className="text-white text-9xl pointer-events-none">
                   {currentTest.bodyPart === 'hand' ? '🤚' : '🦶'}
-                  <div className="text-4xl mt-4">오른쪽</div>
+                  <div className="text-4xl mt-4">{currentTest.bodyPart === 'hand' ? '오른손' : '오른발'}</div>
                 </div>
               )}
             </div>
@@ -704,6 +710,10 @@ function AssessmentContent() {
     const shouldShowLeft = currentTest.trainingRange === 'left' || currentTest.trainingRange === 'both';
     const shouldShowRight = currentTest.trainingRange === 'right' || currentTest.trainingRange === 'both';
 
+    // 색상 결정: 왼손=파랑, 오른손=빨강, 왼발=초록, 오른발=노랑
+    const leftColor = currentTest.bodyPart === 'hand' ? 'bg-blue-700' : 'bg-green-700';
+    const rightColor = currentTest.bodyPart === 'hand' ? 'bg-red-700' : 'bg-yellow-700';
+
     const handleLeftTouch = (e: React.TouchEvent) => {
       e.preventDefault();
       const inputType = currentTest.bodyPart === 'hand' ? 'left-hand' : 'left-foot';
@@ -757,12 +767,12 @@ function AssessmentContent() {
           {shouldShowLeft && (
             <div
               onTouchStart={handleLeftTouch}
-              className="flex-1 transition-all duration-100 flex items-center justify-center border-4 bg-green-700 border-white cursor-pointer"
+              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 ${leftColor} border-white cursor-pointer`}
             >
               {currentTest.trainingRange === 'left' && (
                 <div className="text-white text-9xl pointer-events-none">
                   {currentTest.bodyPart === 'hand' ? '✋' : '🦶'}
-                  <div className="text-4xl mt-4">왼쪽</div>
+                  <div className="text-4xl mt-4">{currentTest.bodyPart === 'hand' ? '왼손' : '왼발'}</div>
                 </div>
               )}
             </div>
@@ -780,12 +790,12 @@ function AssessmentContent() {
           {shouldShowRight && (
             <div
               onTouchStart={handleRightTouch}
-              className="flex-1 transition-all duration-100 flex items-center justify-center border-4 bg-red-700 border-white cursor-pointer"
+              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 ${rightColor} border-white cursor-pointer`}
             >
               {currentTest.trainingRange === 'right' && (
                 <div className="text-white text-9xl pointer-events-none">
                   {currentTest.bodyPart === 'hand' ? '🤚' : '🦶'}
-                  <div className="text-4xl mt-4">오른쪽</div>
+                  <div className="text-4xl mt-4">{currentTest.bodyPart === 'hand' ? '오른손' : '오른발'}</div>
                 </div>
               )}
             </div>
