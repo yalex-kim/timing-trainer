@@ -28,19 +28,32 @@ export default function TimingFeedback({
     <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none">
       {/* 가운데 네모 박스 안에 동그라미로 피드백 표시 */}
       <div
-        className="bg-black bg-opacity-60 p-8 rounded-2xl border-4 border-gray-700 transition-all duration-200 ease-out"
+        className="bg-black bg-opacity-60 p-3 sm:p-4 md:p-6 rounded-xl md:rounded-2xl border-2 md:border-3 border-gray-700 transition-all duration-200 ease-out"
         style={{
           animation: 'bounce-in 0.3s ease-out',
         }}
       >
-        {/* 타이밍 평가 동그라미 */}
-        <div
-          className="w-32 h-32 rounded-full transition-all duration-200"
-          style={{
-            backgroundColor: feedback.color,
-            boxShadow: `0 0 60px ${feedback.color}, 0 0 100px ${feedback.color}80`,
-          }}
-        />
+        <div className="flex flex-col items-center gap-2 sm:gap-3">
+          {/* 타이밍 평가 동그라미 */}
+          <div
+            className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full transition-all duration-200"
+            style={{
+              backgroundColor: feedback.color,
+              boxShadow: `0 0 30px ${feedback.color}, 0 0 50px ${feedback.color}80`,
+            }}
+          />
+
+          {/* 타이밍 차이 값 */}
+          <div
+            className="text-xl sm:text-2xl md:text-3xl font-bold px-3 py-1 rounded-lg"
+            style={{
+              color: feedback.color,
+              textShadow: `0 0 10px ${feedback.color}80`,
+            }}
+          >
+            {feedback.displayText}
+          </div>
+        </div>
       </div>
     </div>
   );
