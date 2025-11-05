@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -15,6 +15,7 @@ import {
 import { ComprehensiveAssessmentReport } from '@/types/evaluation';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { exportToExcel } from '@/utils/excelExport';
 
 interface Props {
   report: ComprehensiveAssessmentReport;
@@ -23,11 +24,13 @@ interface Props {
 
 export default function ComprehensiveAssessmentReportComponent({ report, onClose }: Props) {
   const reportRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // PDF Export
   const handleExportPDF = async () => {
     if (!reportRef.current) return;
 
+    setIsExporting(true);
     try {
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
@@ -57,6 +60,21 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
     } catch (error) {
       console.error('PDF export failed:', error);
       alert('PDF 생성에 실패했습니다.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Excel Export
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      await exportToExcel(report);
+    } catch (error) {
+      console.error('Excel export failed:', error);
+      alert('Excel 생성에 실패했습니다.');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -533,11 +551,21 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         {/* Action Buttons */}
         <div className="flex gap-4 justify-center mt-8 pt-6 border-t-2 border-gray-200">
           <button
+            onClick={handleExportExcel}
+            disabled={isExporting}
+            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
+          >
+            <span>📊</span>
+            <span>{isExporting ? '생성 중...' : 'Excel로 저장'}</span>
+          </button>
+
+          <button
             onClick={handleExportPDF}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
+            disabled={isExporting}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
           >
             <span>📄</span>
-            <span>PDF로 저장</span>
+            <span>{isExporting ? '생성 중...' : 'PDF로 저장'}</span>
           </button>
 
           <button
