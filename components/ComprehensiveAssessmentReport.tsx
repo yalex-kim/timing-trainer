@@ -33,9 +33,27 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
     setIsExporting(true);
     try {
+      // 원본 document의 모든 요소에 computed style 수집
+      const originalElements = Array.from(reportRef.current.querySelectorAll('*')) as HTMLElement[];
+      const computedStyles = originalElements.map(el => window.getComputedStyle(el).cssText);
+
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
+        // oklch 색상 문제 해결: 스타일시트 제거 후 인라인 스타일 적용
+        onclone: (clonedDoc, clonedElement) => {
+          // 1. 모든 스타일시트 제거 (oklch 색상 함수 포함)
+          const styleSheets = clonedDoc.querySelectorAll('style, link[rel="stylesheet"]');
+          styleSheets.forEach(sheet => sheet.remove());
+
+          // 2. 클론된 요소들에 원본의 computed style 적용
+          const clonedElements = Array.from(clonedElement.querySelectorAll('*')) as HTMLElement[];
+          clonedElements.forEach((element, index) => {
+            if (computedStyles[index]) {
+              element.style.cssText = computedStyles[index];
+            }
+          });
+        },
       });
 
       const imgData = canvas.toDataURL('image/png');
