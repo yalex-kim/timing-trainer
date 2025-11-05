@@ -16,6 +16,7 @@ import { ComprehensiveAssessmentReport } from '@/types/evaluation';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { exportToExcel } from '@/utils/excelExport';
+import { exportToGoogleSheets, isGoogleSheetsConfigured } from '@/utils/googleSheetsExport';
 
 interface Props {
   report: ComprehensiveAssessmentReport;
@@ -77,6 +78,22 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
       setIsExporting(false);
     }
   };
+
+  // Google Sheets Export
+  const handleExportGoogleSheets = async () => {
+    setIsExporting(true);
+    try {
+      await exportToGoogleSheets(report);
+      alert('Google Sheets에 데이터가 저장되었습니다!\n\n시트를 새로고침하여 확인하세요.');
+    } catch (error) {
+      console.error('Google Sheets export failed:', error);
+      alert((error as Error).message || 'Google Sheets 저장에 실패했습니다.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const isSheetsConfigured = isGoogleSheetsConfigured();
 
   // Get color based on percentile
   const getPercentileColor = (percentile: number): string => {
@@ -549,11 +566,24 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-4 justify-center mt-8 pt-6 border-t-2 border-gray-200">
+        <div className="flex flex-wrap gap-4 justify-center mt-8 pt-6 border-t-2 border-gray-200">
+          {isSheetsConfigured && (
+            <button
+              onClick={handleExportGoogleSheets}
+              disabled={isExporting}
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
+              title="Google Sheets 데이터베이스에 저장 (시계열 분석용)"
+            >
+              <span>📈</span>
+              <span>{isExporting ? '저장 중...' : 'Google Sheets에 저장'}</span>
+            </button>
+          )}
+
           <button
             onClick={handleExportExcel}
             disabled={isExporting}
             className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
+            title="Excel 파일로 다운로드 (리포트 형식)"
           >
             <span>📊</span>
             <span>{isExporting ? '생성 중...' : 'Excel로 저장'}</span>
@@ -563,6 +593,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
             onClick={handleExportPDF}
             disabled={isExporting}
             className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
+            title="PDF 파일로 다운로드 (인쇄용)"
           >
             <span>📄</span>
             <span>{isExporting ? '생성 중...' : 'PDF로 저장'}</span>
@@ -575,6 +606,17 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
             닫기
           </button>
         </div>
+
+        {!isSheetsConfigured && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+            <p className="text-yellow-800">
+              💡 <strong>Google Sheets 저장 기능을 사용하려면:</strong>
+            </p>
+            <p className="text-yellow-700 mt-1">
+              <code className="bg-yellow-100 px-2 py-1 rounded">docs/GOOGLE_SHEETS_SETUP.md</code> 파일을 참고하여 설정하세요.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
