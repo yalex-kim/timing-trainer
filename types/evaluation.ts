@@ -4,6 +4,17 @@
  */
 
 // ============================================================================
+// 사용자 프로필
+// ============================================================================
+
+export interface UserProfile {
+  name: string;
+  birthDate: string;        // YYYY-MM-DD
+  gender: 'male' | 'female';
+  age?: number;             // 계산된 나이 (자동)
+}
+
+// ============================================================================
 // 입력 시스템 (4가지 독립 입력)
 // ============================================================================
 
@@ -54,6 +65,8 @@ export interface ExpectedInput {
 
 export type TimingClass = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
+export type AgeGroup = 'under7' | '8-9' | '10-11' | '12-13' | '14-16' | 'over17';
+
 export interface ClassLevel {
   class: TimingClass;
   label: string;
@@ -61,6 +74,132 @@ export interface ClassLevel {
   taRange: [number, number]; // [min, max] in ms
   color: string;
 }
+
+// 연령대별, 모드별 Class 기준 (QTrainer 표준 규준표)
+export interface AgeBasedClassRange {
+  class: TimingClass;
+  range: [number, number]; // [min, max] TA in ms
+}
+
+export const AGE_BASED_STANDARDS: {
+  auditory: Record<AgeGroup, AgeBasedClassRange[]>;
+  visual: Record<AgeGroup, AgeBasedClassRange[]>;
+} = {
+  // 청각 모드 기준
+  auditory: {
+    'under7': [
+      { class: 7, range: [0, 40] },      // 아주잘함
+      { class: 6, range: [40, 60] },     // 잘함
+      { class: 5, range: [60, 80] },     // 정상이상
+      { class: 4, range: [80, 100] },    // 정상
+      { class: 3, range: [100, 150] },   // 정상이하
+      { class: 2, range: [150, 230] },   // 못함
+      { class: 1, range: [230, Infinity] }, // 아주못함
+    ],
+    '8-9': [
+      { class: 7, range: [0, 30] },
+      { class: 6, range: [30, 35] },
+      { class: 5, range: [35, 45] },
+      { class: 4, range: [45, 70] },
+      { class: 3, range: [70, 155] },
+      { class: 2, range: [155, 200] },
+      { class: 1, range: [200, Infinity] },
+    ],
+    '10-11': [
+      { class: 7, range: [0, 27] },
+      { class: 6, range: [27, 34] },
+      { class: 5, range: [34, 40] },
+      { class: 4, range: [40, 60] },
+      { class: 3, range: [60, 130] },
+      { class: 2, range: [130, 160] },
+      { class: 1, range: [160, Infinity] },
+    ],
+    '12-13': [
+      { class: 7, range: [0, 25] },
+      { class: 6, range: [25, 30] },
+      { class: 5, range: [30, 35] },
+      { class: 4, range: [35, 45] },
+      { class: 3, range: [45, 105] },
+      { class: 2, range: [105, 150] },
+      { class: 1, range: [150, Infinity] },
+    ],
+    '14-16': [
+      { class: 7, range: [0, 20] },
+      { class: 6, range: [20, 25] },
+      { class: 5, range: [25, 30] },
+      { class: 4, range: [30, 45] },
+      { class: 3, range: [45, 90] },
+      { class: 2, range: [90, 120] },
+      { class: 1, range: [120, Infinity] },
+    ],
+    'over17': [
+      { class: 7, range: [0, 17] },
+      { class: 6, range: [17, 25] },
+      { class: 5, range: [25, 30] },
+      { class: 4, range: [30, 40] },
+      { class: 3, range: [40, 75] },
+      { class: 2, range: [75, 90] },
+      { class: 1, range: [90, Infinity] },
+    ],
+  },
+  // 시각 모드 기준
+  visual: {
+    'under7': [
+      { class: 7, range: [0, 50] },
+      { class: 6, range: [50, 80] },
+      { class: 5, range: [80, 100] },
+      { class: 4, range: [100, 120] },
+      { class: 3, range: [120, 170] },
+      { class: 2, range: [170, 250] },
+      { class: 1, range: [250, Infinity] },
+    ],
+    '8-9': [
+      { class: 7, range: [0, 40] },
+      { class: 6, range: [40, 55] },
+      { class: 5, range: [55, 65] },
+      { class: 4, range: [65, 90] },
+      { class: 3, range: [90, 130] },
+      { class: 2, range: [130, 220] },
+      { class: 1, range: [220, Infinity] },
+    ],
+    '10-11': [
+      { class: 7, range: [0, 35] },
+      { class: 6, range: [35, 45] },
+      { class: 5, range: [45, 60] },
+      { class: 4, range: [60, 75] },
+      { class: 3, range: [75, 110] },
+      { class: 2, range: [110, 200] },
+      { class: 1, range: [200, Infinity] },
+    ],
+    '12-13': [
+      { class: 7, range: [0, 30] },
+      { class: 6, range: [30, 40] },
+      { class: 5, range: [40, 50] },
+      { class: 4, range: [50, 65] },
+      { class: 3, range: [65, 95] },
+      { class: 2, range: [95, 160] },
+      { class: 1, range: [160, Infinity] },
+    ],
+    '14-16': [
+      { class: 7, range: [0, 27] },
+      { class: 6, range: [27, 30] },
+      { class: 5, range: [30, 40] },
+      { class: 4, range: [40, 55] },
+      { class: 3, range: [55, 75] },
+      { class: 2, range: [75, 130] },
+      { class: 1, range: [130, Infinity] },
+    ],
+    'over17': [
+      { class: 7, range: [0, 25] },
+      { class: 6, range: [25, 30] },
+      { class: 5, range: [30, 40] },
+      { class: 4, range: [40, 50] },
+      { class: 3, range: [50, 70] },
+      { class: 2, range: [70, 100] },
+      { class: 1, range: [100, Infinity] },
+    ],
+  },
+};
 
 export const CLASS_DEFINITIONS: ClassLevel[] = [
   {
@@ -254,6 +393,9 @@ export interface TrainingSession {
   startTime: number;              // timestamp
   endTime?: number;               // timestamp
 
+  // 사용자 정보
+  userProfile: UserProfile;
+
   // 설정
   settings: {
     trainingType: 'visual' | 'audio';
@@ -351,3 +493,90 @@ export const DEFAULT_INPUT_MAPPING: InputMapping = {
     keyboard: ['c', 'C', 'v', 'V'],
   },
 };
+
+// ============================================================================
+// 종합 평가 리포트
+// ============================================================================
+
+export interface ProcessingCapability {
+  taskAverage: number;      // milliseconds
+  percentile: number;       // 0-100
+  level: string;            // "아주못함", "못함", "정상이하", "정상", "정상이상", "잘함", "아주잘함"
+  classLevel: TimingClass;  // 1-7
+}
+
+export interface AttentionMetrics {
+  percentile: number;       // 0-100
+  level: "미달" | "보통" | "우수";
+  standardDeviation: number; // milliseconds
+}
+
+export interface SustainabilityMetrics {
+  errorRate: number;        // percentage (0-100)
+  improvementRate: number;  // percentage (0-100)
+  earlyAverage: number;     // milliseconds
+  lateAverage: number;      // milliseconds
+}
+
+export interface HemisphereBalance {
+  leftBrain: number;        // percentage (0-100)
+  rightBrain: number;       // percentage (0-100)
+  correlation: "높음" | "보통" | "낮음";
+  difference: number;       // percentage
+}
+
+export interface LearningStyle {
+  dominantStyle: "visual" | "auditory" | "balanced";
+  difference: number;       // percentage difference
+  dominantLabel: "시각우성" | "청각우성" | "균형적";
+}
+
+export interface ComprehensiveAssessmentReport {
+  // 환자 정보
+  patientInfo: {
+    name: string;
+    gender: "male" | "female";
+    age: number;
+    testDate: string;
+  };
+
+  // 1. 시청각 학습능력
+  processingCapability: {
+    visual: ProcessingCapability;
+    auditory: ProcessingCapability;
+  };
+
+  // 2. 학습 스타일
+  learningStyle: LearningStyle;
+
+  // 3. 시청각 주의력
+  attention: {
+    visual: AttentionMetrics;
+    auditory: AttentionMetrics;
+  };
+
+  // 4. 뇌 인지속도
+  brainSpeed: {
+    taskAverage: number;      // milliseconds
+    level: "미달" | "보통" | "우수";
+    percentile: number;
+  };
+
+  // 5. 지속성
+  sustainability: {
+    visual: SustainabilityMetrics;
+    auditory: SustainabilityMetrics;
+  };
+
+  // 6. 좌우뇌 균형도
+  hemisphereBalance: HemisphereBalance;
+
+  // 개별 검사 결과 (8개)
+  individualResults: {
+    testName: string;
+    sessionResults: SessionResults;
+  }[];
+
+  // 원본 세션 데이터
+  sessions: TrainingSession[];
+}

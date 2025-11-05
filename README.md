@@ -1,40 +1,191 @@
-# 시청각 타이밍 훈련 프로그램
+# 시청각 타이밍 훈련 및 평가 프로그램
 
-시각 및 청각 자극에 대한 타이밍 훈련용 웹 애플리케이션입니다.
+시각 및 청각 자극에 대한 타이밍 훈련과 종합 평가를 제공하는 웹 애플리케이션입니다.
 
 ## 주요 기능
 
-### 1. 시각 훈련 모드
+### 1. 훈련 모드 (Training Mode)
+
+#### 시각 훈련
 - 전체화면을 좌우 2등분 (녹색/빨간색 영역)
 - BPM에 맞춰 해당 영역 깜빡임
 - 손/발 일러스트 표시
 - 훈련 범위 선택: 왼쪽 / 오른쪽 / 양쪽
 
-### 2. 청각 훈련 모드
+#### 청각 훈련
 - 설정된 BPM에 맞춰 "삐" 소리 재생
 - 모노 사운드 지원
 
-### 3. 설정 옵션
+#### 설정 옵션
 - **훈련 타입**: 시각 / 청각
 - **신체 부위**: 손 / 발
 - **훈련 범위**: 왼쪽 / 오른쪽 / 양쪽
 - **BPM**: 40-200 범위 조절
 - **훈련 시간**: 1-5분
 
-### 4. 제어 기능
-- 전체화면 모드
-- 우측 상단 X 버튼 (프로그램 종료)
-- ESC 키 (훈련 중지/취소)
-- 실시간 BPM 및 남은 시간 표시
+#### 실시간 피드백
+- 6단계 타이밍 정확도 피드백 (Perfect/Excellent/Good/Fair/Poor/Miss)
+- 입력 타이밍 편차 표시 (ms 단위)
+- 점수 및 정확도 실시간 표시
+
+### 2. 검사 모드 (Assessment Mode)
+
+체계적인 타이밍 능력 평가를 위한 표준화된 검사 모드입니다.
+
+#### 검사 구성
+- **BPM**: 60 고정
+- **검사 시간**: 각 검사당 40초
+- **총 8개 순차 검사**:
+  1. 왼손 청각
+  2. 왼손 시각
+  3. 오른손 청각
+  4. 오른손 시각
+  5. 왼발 청각
+  6. 왼발 시각
+  7. 오른발 청각
+  8. 오른발 시각
+
+#### 검사 진행 흐름
+1. 검사 시작 화면 (순서 안내)
+2. 각 검사별 5초 카운트다운
+3. 40초간 검사 진행
+4. 검사 완료 후 대기 화면
+5. "다음 검사 시작" 버튼 또는 아무 키나 눌러 진행
+6. 8개 검사 완료 후 종합 평가 리포트 표시
+
+### 3. 종합 평가 리포트 (Comprehensive Assessment Report)
+
+8개 검사 결과를 종합 분석하여 6가지 핵심 지표를 제공합니다.
+
+#### Section 1: 시청각 학습능력
+- **시각 처리 능력**
+  - Task Average (ms)
+  - Class Level (1-7)
+  - 수준 (아주잘함 ~ 아주못함)
+  - 백분위 (0-100%)
+- **청각 처리 능력**
+  - 동일한 지표로 측정
+- **백분위 계산**: 정규 분포 기반 (Class 4 = 50th percentile)
+  - Class 7 = 98th percentile
+  - Class 6 = 90th percentile
+  - Class 5 = 75th percentile
+  - Class 4 = 50th percentile
+  - Class 3 = 25th percentile
+  - Class 2 = 10th percentile
+  - Class 1 = 2nd percentile
+
+#### Section 2: 학습 스타일
+- **우성 스타일 결정**
+  - 시각 우성 (visual > auditory by 5%+)
+  - 청각 우성 (auditory > visual by 5%+)
+  - 균형적 (차이 < 5%)
+- 시각/청각 백분위 비교
+- 차이 백분율 표시
+
+#### Section 3: 시청각 주의력
+- **표준편차 기반 주의력 측정**
+  - 우수: SD < 20ms (85th percentile)
+  - 보통: SD 20-40ms (30-70th percentile)
+  - 미달: SD > 40ms (<30th percentile)
+- 시각 주의력 / 청각 주의력 각각 평가
+
+#### Section 4: 뇌 인지속도
+- **전체 평균 Task Average**
+  - 시각 + 청각 TA의 평균
+- **수준 분류**
+  - 우수: Class 5-7
+  - 보통: Class 3-4
+  - 미달: Class 1-2
+- 백분위 순위
+
+#### Section 5: 지속성 (Sustainability)
+- **초반 vs 후반 성능 비교**
+  - 초반 평균 (전반부 50%)
+  - 후반 평균 (후반부 50%)
+- **오류율**: 후반 성능이 저하된 경우
+  - `((후반 - 초반) / 초반) × 100%`
+- **향상율**: 후반 성능이 개선된 경우
+  - `((초반 - 후반) / 초반) × 100%`
+- 시각/청각 각각 평가
+
+#### Section 6: 좌우뇌 균형도
+- **신체-뇌 매핑**
+  - 왼쪽 신체 (왼손 + 왼발) → 우뇌
+  - 오른쪽 신체 (오른손 + 오른발) → 좌뇌
+- **균형도 평가**
+  - 높음: 차이 < 10%
+  - 보통: 차이 10-20%
+  - 낮음: 차이 > 20%
+- 좌뇌/우뇌 백분율 시각화
+
+#### 개별 검사 결과
+- 8개 검사 각각의 상세 결과 테이블
+  - 검사명
+  - Task Average
+  - Class Level
+  - 정답률
+  - 총 입력수
+
+#### PDF 내보내기
+- 전체 리포트를 PDF 파일로 저장
+- 파일명: `[이름]_타이밍검사_[날짜].pdf`
+
+### 4. 연령별 검사 기준표
+
+Interactive Metronome (IM) 연구를 기반으로 한 연령별 평가 기준을 제공합니다.
+
+#### 연령 그룹 (6개)
+- 만 7세 미만
+- 만 7-8세
+- 만 9-10세
+- 만 11-12세
+- 만 13-17세
+- 만 18세 이상
+
+#### Class 기준 (7단계)
+각 연령 그룹별로 Class 1-7의 TA 범위가 정의되어 있습니다.
+
+- **시각 모드**: 시각 자극에 대한 반응 기준
+- **청각 모드**: 청각 자극에 대한 반응 기준
+
+기준표는 메인 화면의 "연령별 검사 기준표 보기" 버튼을 통해 확인 가능합니다.
+
+### 5. 사용자 프로필 관리
+
+#### 프로필 정보
+- **이름**: 검사 결과에 표시
+- **성별**: 남성 / 여성
+- **생년월일**: 연령 자동 계산 (만 나이)
+- **모드 선택**: 훈련 모드 / 검사 모드
+
+#### 데이터 저장
+- LocalStorage를 사용한 로컬 저장
+- 서버 연결 불필요
+- 프라이버시 보호
 
 ## 기술 스택
 
+### 프레임워크 및 라이브러리
 - **프레임워크**: Next.js 15 (App Router)
 - **언어**: TypeScript
 - **스타일링**: Tailwind CSS
+- **차트**: Recharts (Electron/exe 호환)
+- **PDF 생성**: jsPDF + html2canvas
 - **패키지 매니저**: npm
 
-## 로컬 환경에서 실행
+### 주요 라이브러리
+```json
+{
+  "next": "15.5.5",
+  "react": "^19.0.0",
+  "typescript": "^5",
+  "recharts": "^2.x",
+  "jspdf": "^2.x",
+  "html2canvas": "^1.x"
+}
+```
+
+## 설치 및 실행
 
 ### 1. 의존성 설치
 ```bash
@@ -54,6 +205,242 @@ npm run dev
 npm run build
 npm start
 ```
+
+## 프로젝트 구조
+
+```
+timing-trainer/
+├── app/
+│   ├── page.tsx               # 메인 화면 (프로필 입력 및 모드 선택)
+│   ├── training/
+│   │   └── page.tsx           # 훈련 모드 화면
+│   ├── assessment/
+│   │   └── page.tsx           # 검사 모드 화면
+│   ├── standards/
+│   │   └── page.tsx           # 연령별 검사 기준표
+│   ├── layout.tsx             # 루트 레이아웃
+│   └── globals.css            # 글로벌 스타일
+├── components/
+│   ├── TimingFeedback.tsx     # 실시간 타이밍 피드백
+│   ├── SessionResults.tsx     # 세션 결과 화면 (훈련 모드용)
+│   └── ComprehensiveAssessmentReport.tsx  # 종합 평가 리포트
+├── utils/
+│   ├── evaluator.ts           # 타이밍 평가 로직
+│   └── assessmentReport.ts    # 종합 리포트 계산 로직
+├── types/
+│   ├── index.ts               # 기본 타입 정의
+│   └── evaluation.ts          # 평가 관련 타입 정의
+├── hooks/
+│   └── useInputHandler.ts     # 키보드/터치 입력 핸들러
+├── public/                    # 정적 파일
+├── package.json
+├── tsconfig.json
+├── tailwind.config.ts
+└── next.config.ts
+```
+
+## 사용 방법
+
+### 훈련 모드
+
+1. **프로필 입력**
+   - 이름 입력
+   - 성별 선택 (남성/여성)
+   - 생년월일 입력
+
+2. **훈련 모드 선택**
+   - "훈련 시작" 버튼 클릭
+
+3. **훈련 설정**
+   - 훈련 타입 선택 (시각 / 청각)
+   - 신체 부위 선택 (손 / 발)
+   - 훈련 범위 선택 (왼쪽 / 오른쪽 / 양쪽)
+   - BPM 조절 (40-200)
+   - 훈련 시간 설정 (1-5분)
+
+4. **훈련 진행**
+   - 자극(시각/청각)에 맞춰 입력
+   - 실시간 피드백 확인
+   - 정확도 및 점수 확인
+
+5. **결과 확인**
+   - Task Average, Class Level
+   - 정답률, 응답률, 일관성 점수
+   - Early/Late 반응 분포
+   - 신체 부위별 상세 통계
+
+### 검사 모드
+
+1. **프로필 입력**
+   - 이름, 성별, 생년월일 입력
+
+2. **검사 모드 선택**
+   - "검사 시작" 버튼 클릭
+
+3. **검사 진행**
+   - 검사 순서 확인
+   - 각 검사별 5초 카운트다운 대기
+   - 40초간 검사 진행 (60 BPM 고정)
+   - "다음 검사 시작" 버튼 또는 아무 키나 눌러 다음 검사로 진행
+   - 총 8개 검사 완료
+
+4. **종합 리포트 확인**
+   - 6가지 핵심 지표 확인
+   - 개별 검사 결과 테이블 확인
+   - PDF로 저장 가능
+
+### 연령별 기준표 확인
+
+1. 메인 화면에서 "연령별 검사 기준표 보기" 버튼 클릭
+2. 시각 모드 / 청각 모드 탭 전환
+3. 6개 연령 그룹별 Class 1-7 기준 확인
+
+## 타이밍 평가 시스템
+
+이 프로그램은 Interactive Metronome (IM) 연구를 기반으로 한 타이밍 평가 시스템을 구현하고 있습니다.
+
+### 핵심 평가 지표
+
+#### 1. Task Average (TA)
+- **정의**: 모든 올바른 입력의 절대 편차(ms) 평균
+- **계산**: `Σ|실제시간 - 예상시간| / 올바른 입력 수`
+- **단위**: milliseconds (ms)
+- **의미**: 낮을수록 정확한 타이밍 능력
+- **구현**: `utils/evaluator.ts`
+
+#### 2. Class Level (1-7)
+TA 값을 연령별 기준에 따라 7단계로 분류:
+
+| Class | 등급 | 의미 |
+|-------|------|------|
+| 7 | 아주 잘함 | 최상급 타이밍 능력 |
+| 6 | 잘함 | 뛰어난 타이밍 능력 |
+| 5 | 평균 이상 | 평균보다 높은 능력 |
+| 4 | 평균 | 평균적인 능력 |
+| 3 | 평균 이하 | 평균보다 낮은 능력 |
+| 2 | 못함 | 심각한 타이밍 결핍 |
+| 1 | 아주 못함 | 극심한 타이밍 결핍 |
+
+**연령별 기준**: 6개 연령 그룹별로 Class 경계값이 다르게 적용됩니다.
+
+#### 3. 백분위 (Percentile)
+- **계산 방식**: 정규 분포 기반
+- **기준**: Class 4를 50th percentile로 설정
+- **의미**: 동일 연령대 대비 상대적 위치
+
+#### 4. 표준편차 (Standard Deviation)
+- **용도**: 주의력 및 일관성 측정
+- **의미**: 낮을수록 일관된 타이밍 능력
+
+#### 5. Response Distribution
+- **Early Hit %**: 너무 빠른 반응 비율 (deviation < -5ms)
+- **Late Hit %**: 너무 늦은 반응 비율 (deviation > +5ms)
+- **On-Target %**: 정확한 타이밍 반응 비율 (|deviation| ≤ 5ms)
+
+#### 6. Real-time Feedback
+각 입력에 대한 즉각적인 6단계 피드백:
+
+| 등급 | 편차 범위 | 점수 | 색상 |
+|------|-----------|------|------|
+| Perfect | ≤15ms | 100점 | 초록색 |
+| Excellent | ≤30ms | 90점 | 연두색 |
+| Good | ≤50ms | 75점 | 황록색 |
+| Fair | ≤80ms | 60점 | 노란색 |
+| Poor | ≤120ms | 40점 | 주황색 |
+| Miss | >120ms | 0점 | 빨간색 |
+
+### 연령별 평가 기준 (AGE_BASED_STANDARDS)
+
+#### 연령 그룹 정의
+```typescript
+'under7'    // 만 7세 미만
+'age7to8'   // 만 7-8세
+'age9to10'  // 만 9-10세
+'age11to12' // 만 11-12세
+'age13to17' // 만 13-17세
+'adult'     // 만 18세 이상
+```
+
+#### 모드별 기준
+- **시각 모드 (visual)**: 시각 자극에 대한 반응 기준
+- **청각 모드 (auditory)**: 청각 자극에 대한 반응 기준
+
+각 연령 그룹과 모드 조합마다 Class 1-7의 TA 범위가 정의되어 있습니다.
+
+### 종합 리포트 계산 로직
+
+#### 처리 능력 (Processing Capability)
+```typescript
+// 시각 처리 능력: 왼손 시각 + 오른손 시각 + 왼발 시각 + 오른발 시각
+// 청각 처리 능력: 왼손 청각 + 오른손 청각 + 왼발 청각 + 오른발 청각
+```
+
+#### 학습 스타일 (Learning Style)
+```typescript
+const difference = Math.abs(visualPercentile - auditoryPercentile);
+if (difference < 5) return "균형적";
+return visualPercentile > auditoryPercentile ? "시각우성" : "청각우성";
+```
+
+#### 주의력 (Attention)
+```typescript
+const variance = deviations.reduce((sum, d) => sum + Math.pow(d, 2), 0) / deviations.length;
+const standardDeviation = Math.sqrt(variance);
+
+if (sd < 20) return { level: "우수", percentile: 85 };
+if (sd < 40) return { level: "보통", percentile: 50 };
+return { level: "미달", percentile: 15 };
+```
+
+#### 지속성 (Sustainability)
+```typescript
+const midpoint = Math.floor(allDeviations.length / 2);
+const earlyAverage = mean(allDeviations.slice(0, midpoint));
+const lateAverage = mean(allDeviations.slice(midpoint));
+
+if (lateAverage > earlyAverage) {
+  errorRate = ((lateAverage - earlyAverage) / earlyAverage) * 100;
+} else {
+  improvementRate = ((earlyAverage - lateAverage) / earlyAverage) * 100;
+}
+```
+
+#### 좌우뇌 균형도 (Hemisphere Balance)
+```typescript
+// 왼쪽 신체 (왼손 + 왼발) = 우뇌
+// 오른쪽 신체 (오른손 + 오른발) = 좌뇌
+
+const leftSideAverage = (leftHandTA + leftFootTA) / 2;
+const rightSideAverage = (rightHandTA + rightFootTA) / 2;
+
+// 낮은 TA = 더 좋은 성능 = 더 높은 백분율
+const rightBrain = Math.round((rightSideAverage / total) * 100);
+const leftBrain = 100 - rightBrain;
+
+const difference = Math.abs(leftBrain - rightBrain);
+if (difference < 10) return "높음";
+if (difference < 20) return "보통";
+return "낮음";
+```
+
+## 입력 처리
+
+### 지원 입력 방식
+
+#### 키보드 입력
+- **왼손**: Q, W, E, A, S, D, Z, X, C 키
+- **오른손**: U, I, O, J, K, L, M, <, > 키
+- **왼발**: 1, 2, 3 키
+- **오른발**: 8, 9, 0 키
+
+#### 터치 입력 (모바일)
+- 화면 좌측/우측 영역 터치
+- 신체 부위별 입력 자동 매핑
+
+### 입력 검증
+- **비트 매칭**: 가장 가까운 예상 비트 자동 찾기 (±500ms 허용)
+- **중복 방지**: 이미 입력된 비트는 재입력 불가
+- **올바른 입력**: 예상된 신체 부위와 일치하는 입력만 정답 처리
 
 ## Vercel 배포 (Phase 1 - 웹 프로토타입)
 
@@ -101,296 +488,59 @@ vercel --prod
 - 전체화면 모드
 - 오프라인 실행 가능
 
-## 프로젝트 구조
-
-```
-timing-trainer/
-├── app/
-│   ├── page.tsx          # 설정 화면 (메인 페이지)
-│   ├── training/
-│   │   └── page.tsx      # 훈련 화면 (시각/청각 모드)
-│   ├── layout.tsx        # 레이아웃
-│   └── globals.css       # 글로벌 스타일
-├── types/
-│   └── index.ts          # TypeScript 타입 정의
-├── public/               # 정적 파일
-├── package.json
-├── tsconfig.json
-├── tailwind.config.ts
-└── next.config.ts
-```
-
-## 사용 방법
-
-### 1. 설정 화면
-1. 훈련 타입 선택 (시각 / 청각)
-2. 신체 부위 선택 (손 / 발)
-3. 훈련 범위 선택 (왼쪽 / 오른쪽 / 양쪽)
-4. BPM 조절 (40-200)
-5. 훈련 시간 설정 (1-5분)
-6. "훈련 시작" 버튼 클릭
-
-### 2. 훈련 화면
-- **시각 훈련**: 화면이 BPM에 맞춰 깜빡임, 손/발 일러스트 표시
-- **청각 훈련**: 소리가 BPM에 맞춰 재생
-- **종료**: 우측 상단 X 버튼 클릭 또는 ESC 키 누르기
-- **자동 종료**: 설정한 시간이 경과하면 자동으로 설정 화면으로 돌아감
+### 패키징 고려사항
+- Recharts는 Electron과 완벽 호환
+- PDF 생성 기능은 로컬 파일 시스템 사용
+- LocalStorage는 Electron의 userData 디렉토리로 이전
 
 ## 특징
 
+### 훈련 모드
 - 간단하고 직관적인 UI/UX
-- 최소한의 리소스 사용 (저사양 PC 지원)
+- 실시간 타이밍 피드백
+- 신체 부위별 상세 통계
+- 유연한 BPM 및 시간 설정
+
+### 검사 모드
+- 표준화된 평가 프로토콜
+- 8개 순차 검사로 종합 평가
+- 과학적 근거 기반 평가 지표
+- 연령별 규준 적용
+- 종합 리포트 및 PDF 내보내기
+
+### 기술적 특징
 - 서버 연결, 로그인, 데이터베이스 불필요
-- 빠른 프로토타이핑 및 검수 가능
+- 최소한의 리소스 사용 (저사양 PC 지원)
 - 크로스 플랫폼 지원 (웹 기반)
-
----
-
-## 타이밍 평가 시스템
-
-이 프로그램은 Interactive Metronome (IM) 연구를 기반으로 한 타이밍 평가 시스템을 구현하고 있습니다.
-
-### 구현된 평가 지표
-
-#### 1. Task Average (TA)
-- **정의**: 모든 입력의 절대 편차(ms) 평균
-- **계산**: `Σ|실제시간 - 예상시간| / 올바른 입력 수`
-- **단위**: milliseconds (ms)
-- **의미**: 낮을수록 정확한 타이밍 능력
-- **구현 위치**: `utils/evaluator.ts:254-259`
-
-#### 2. Class Level (1-7)
-TA 값을 기반으로 7단계 등급 분류:
-
-| Class | 등급명 | TA 범위 (ms) | 설명 |
-|-------|--------|-------------|------|
-| 7 | 최상급 | 0 - 20 | 최상급 타이밍 능력 |
-| 6 | 뛰어남 | 20 - 40 | 뛰어난 타이밍 능력 |
-| 5 | 평균 이상 | 40 - 80 | 평균보다 높은 타이밍 능력 |
-| 4 | 평균 | 80 - 120 | 평균적인 타이밍 능력 |
-| 3 | 평균 이하 | 120 - 180 | 평균보다 낮은 타이밍 능력 |
-| 2 | 심각한 결핍 | 180 - 250 | 심각한 타이밍 결핍 |
-| 1 | 극심한 결핍 | 250+ | 가장 심각한 타이밍 결핍 |
-
-**구현 위치**: `types/evaluation.ts:65-115`
-
-#### 3. Response Distribution (반응 분포)
-- **Early Hit %**: 너무 빠른 반응 비율 (deviation < -5ms)
-- **Late Hit %**: 너무 늦은 반응 비율 (deviation > +5ms)
-- **On-Target %**: 정확한 타이밍 반응 비율 (|deviation| ≤ 5ms)
-- **목표**: Early/Late 균형 (50/50에 가까울수록 개선됨)
-- **구현 위치**: `utils/evaluator.ts:264-269`
-
-#### 4. Real-time Feedback (실시간 피드백)
-각 입력에 대한 즉각적인 6단계 피드백:
-
-| 등급 | 범위 | 점수 | 색상 |
-|------|------|------|------|
-| Perfect | ≤15ms | 100점 | 초록색 |
-| Excellent | ≤30ms | 90점 | 연두색 |
-| Good | ≤50ms | 75점 | 황록색 |
-| Fair | ≤80ms | 60점 | 노란색 |
-| Poor | ≤120ms | 40점 | 주황색 |
-| Miss | >120ms | 0점 | 빨간색 |
-
-**구현 위치**: `types/evaluation.ts:130-167`
-
-#### 5. 세션 통계
-- **Response Rate**: 응답률 (입력한 비트 / 전체 비트)
-- **Accuracy Rate**: 정확도 (올바른 입력 / 전체 입력)
-- **Consistency Score**: 일관성 점수 (표준편차 기반, 0-100)
-- **신체 부위별 통계**: 왼손/오른손/왼발/오른발 각각의 평균 편차 및 점수
-- **구현 위치**: `utils/evaluator.ts:249-341`
-
-### 연구 논문과의 비교
-
-#### 연구 기준 (Chung et al., 2022)
-- **대상**: 초등학생 1-3학년 (6.5-8.7세, n=8)
-- **훈련**: 70+ 세션, 주 2-3회, 40-50분/세션
-- **측정**: Long Form Assessment (LFA) 14개 모터 태스크
-
-**Pre-training 결과:**
-- Mean TA: 217.4 ± 59.7 ms
-- Mean Class: 2.0 ± 0.8 (Severe Deficiency)
-- Early Hit: 67.1 ± 13.2%
-- Late Hit: 33.0 ± 13.2%
-
-**Post-training 결과 (70+ 세션 후):**
-- Mean TA: 39.1 ± 16.1 ms (82% 개선 ↓)
-- Mean Class: 5.75 ± 1.0 (Above Average)
-- Early Hit: 47.2 ± 8.8%
-- Late Hit: 52.8 ± 8.8%
-
-#### 현재 구현 vs 연구 논문
-
-| 항목 | 연구 논문 | 현재 구현 | 일치 여부 |
-|------|-----------|-----------|----------|
-| **TA 계산 방식** | 절대 편차 평균 | 절대 편차 평균 | ✅ 일치 |
-| **Deviation 계산** | actual - expected | actual - expected | ✅ 일치 |
-| **Early/Late 분포** | % 계산 | % 계산 | ✅ 일치 |
-| **Class 범위** | 연령별 규범 기반 | 추정 범위 사용 | ⚠️ **검토 필요** |
-| **OnTarget 기준** | 명시 없음 | ±5ms | ⚠️ **추정치** |
-| **피드백 단계** | 3단계 소리 | 6단계 시각 | ⚠️ **다름** |
-| **피드백 범위** | 명시 없음 | 15/30/50/80/120ms | ⚠️ **추정치** |
-
-### 현재 상태 및 향후 논의 필요 사항
-
-#### ✅ 올바르게 구현된 부분
-1. **TA 계산**: 절대 편차의 평균, 올바른 입력만 사용
-2. **Deviation 방향**: 양수(늦음), 음수(빠름)
-3. **Early/Late 분포**: 백분율 계산
-4. **타임스탬프 기반 비트 매칭**: 가장 가까운 비트 자동 찾기 (±500ms 허용 범위)
-5. **Miss 피드백**: 입력하지 않은 비트 자동 표시
-
-#### ⚠️ 검토가 필요한 부분
-
-##### 1. Class 범위 기준
-**현재 문제:**
-- 연구: TA 39.1ms → Class 5.75
-- 현재: TA 39.1ms → Class 6
-- 차이: Class 5/6 경계가 40ms인데, 연구 데이터와 불일치
-
-**가능한 해결책:**
-- A. 연구 데이터(2개 포인트)로 범위 역산
-- B. IM 공식 매뉴얼의 정확한 Class 범위 확인
-- C. 연령별 규범 테이블 구현 (6-7세, 7-8세, 성인 등)
-
-**논의 필요:**
-- 논문에 Class 1-7의 정확한 TA 범위가 명시되어 있는가?
-- "연령별 규범(age-normed)"을 어떻게 구현할 것인가?
-
-##### 2. OnTarget 기준 (±5ms)
-**현재 상태:**
-- Early/Late 구분: deviation < -5ms = Early, > +5ms = Late
-- OnTarget 범위: |deviation| ≤ 5ms
-
-**논의 필요:**
-- 논문에 OnTarget의 정확한 범위가 명시되어 있는가?
-- ±5ms가 적절한가, 아니면 ±10ms 또는 ±15ms로 조정해야 하는가?
-
-##### 3. 실시간 피드백 시스템
-**현재 상태:**
-- 6단계 시각 피드백 (Perfect/Excellent/Good/Fair/Poor/Miss)
-- 범위: 15/30/50/80/120ms
-
-**연구 논문 (Stage 2):**
-- 3단계 소리 피드백
-  - On-target sound
-  - Slightly early/late sound
-  - Very early/late sound
-
-**논의 필요:**
-- 3단계 소리의 정확한 범위(ms)가 명시되어 있는가?
-- 시각 모드는 6단계, 청각 모드는 3단계로 구분할 것인가?
-- 현재 범위(15/30/50/80/120ms)를 조정해야 하는가?
-
-##### 4. 14개 표준 모터 태스크
-**연구 논문:**
-1. Both hands
-2. Right hand
-3. Left hand
-4. Both toes
-5. Right toe
-6. Left toe
-7. Both heels
-8. Right heel
-9. Left heel
-10. Right hand/Left toe
-11. Left hand/Right toe
-12. Right hand/Left foot (heel)
-13. Left hand/Right foot (heel)
-14. Balance tasks
-
-**현재 구현:**
-- 11가지 패턴 (손/발 기본 조합)
-- Toe/Heel 구분 없음
-- Balance 태스크 없음
-
-**논의 필요:**
-- 14개 전체 태스크 구현이 필요한가?
-- Toe/Heel 입력을 어떻게 구분할 것인가? (하드웨어 요구사항)
-
-#### 🔄 구현되지 않은 연구 요소
-
-##### 5. 세션 추적 시스템
-**연구 권장:**
-- 최소 70세션
-- 10세션마다 Short Form Assessment (SFA)
-- Pre/Post LFA 비교
-
-**현재 구현:**
-- 개별 세션만 기록
-- 세션 번호 추적 없음
-- 진행도 그래프 없음
-
-**논의 필요:**
-- 세션 데이터를 어떻게 저장할 것인가? (LocalStorage / 파일 / DB)
-- 진행도 그래프가 필요한가?
-
-##### 6. 4단계 훈련 모델
-**연구 프로토콜:**
-- Stage 1 (1-10회): Foundation
-- Stage 2 (11-30회): Auditory Processing
-- Stage 3 (31-60회): Performance Optimization
-- Stage 4 (61+회): Advanced Integration (dual-task)
-
-**현재 구현:**
-- 단순 반복 훈련
-- 단계별 프로그램 없음
-
-**논의 필요:**
-- 4단계 모델 구현이 필요한가?
-- 자동 난이도 조정 시스템이 필요한가?
-
-##### 7. 데이터 Export
-**연구 권장 형식:**
-```json
-{
-  "assessment_date": "YYYY-MM-DD",
-  "session_number": 0,
-  "assessment_type": "LFA|SFA",
-  "metrics": {
-    "task_average_ms": 217.4,
-    "class_level": 2,
-    "early_hit_percent": 67.1,
-    "late_hit_percent": 33.0
-  }
-}
-```
-
-**현재 구현:**
-- 콘솔 로그만
-- 파일 저장 기능 없음
-
-**논의 필요:**
-- JSON/CSV Export 기능이 필요한가?
-- 클라우드 동기화가 필요한가?
-
-### 기술 문서
-
-상세한 구현 내용은 다음 파일 참조:
-- `types/evaluation.ts`: 타입 정의 및 기준값
-- `utils/evaluator.ts`: 평가 로직 구현
-- `components/SessionResults.tsx`: 결과 화면
-- `components/TimingFeedback.tsx`: 실시간 피드백
-
-### 참고 문헌
-
-연구 기반:
-- Chung et al. (2022): Brain timing training effects on reading in children
-- McGrew (2013): Neurophysiological mechanism of IM
-- Cassily & Jacokes (2001): Test-retest reliability
-- Bonacina et al. (2018), Ritter et al. (2013): Reading correlation studies
-
----
+- 모바일 터치 입력 지원
+- 키보드 입력 지원
+- LocalStorage 기반 프라이버시 보호
 
 ## 개발 단계
 
 ### Phase 1: 웹 프로토타입 (현재)
 - [x] Next.js 프로젝트 설정
-- [x] 설정 화면 구현
-- [x] 시각 훈련 모드 구현
-- [x] 청각 훈련 모드 구현
+- [x] 사용자 프로필 입력 화면
+- [x] 훈련 모드 구현
+  - [x] 시각 훈련
+  - [x] 청각 훈련
+  - [x] 실시간 피드백
+  - [x] 세션 결과 화면
+- [x] 검사 모드 구현
+  - [x] 8개 순차 검사
+  - [x] 5초 카운트다운
+  - [x] 검사 진행 UI
+  - [x] 종합 평가 리포트
+- [x] 연령별 검사 기준표
+- [x] 타이밍 평가 시스템
+  - [x] TA 계산
+  - [x] Class 분류
+  - [x] 백분위 계산
+  - [x] 주의력 평가 (표준편차)
+  - [x] 지속성 평가
+  - [x] 좌우뇌 균형도
+- [x] PDF 내보내기 기능
+- [x] 모바일 터치 입력 지원
 - [x] 전체화면 모드 및 제어 기능
 - [ ] Vercel 배포
 - [ ] 기능 검수 및 피드백 반영
@@ -400,11 +550,23 @@ TA 값을 기반으로 7단계 등급 분류:
 - [ ] Windows 실행 파일 생성
 - [ ] 저사양 PC 최적화
 - [ ] 설치 프로그램 제작
+- [ ] 로컬 데이터 저장 시스템
 
 ### Phase 3: 고도화 (선택사항)
-- [ ] 추가 기능 구현
-- [ ] 사용자 피드백 반영
-- [ ] 성능 최적화
+- [ ] 세션 추적 시스템 (70세션 목표)
+- [ ] 진행도 그래프
+- [ ] 4단계 훈련 모델 (Stage 1-4)
+- [ ] 자동 난이도 조정
+- [ ] 데이터 Export (JSON/CSV)
+- [ ] 클라우드 동기화 (선택)
+
+## 참고 문헌
+
+연구 기반:
+- Chung et al. (2022): Brain timing training effects on reading in children
+- McGrew (2013): Neurophysiological mechanism of IM
+- Cassily & Jacokes (2001): Test-retest reliability
+- Bonacina et al. (2018), Ritter et al. (2013): Reading correlation studies
 
 ## 문의 및 피드백
 

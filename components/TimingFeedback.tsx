@@ -25,72 +25,36 @@ export default function TimingFeedback({
   if (!feedback) return null;
 
   return (
-    <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-40 pointer-events-none">
-      {/* 메인 피드백 */}
+    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none">
+      {/* 가운데 네모 박스 안에 동그라미로 피드백 표시 */}
       <div
-        className="text-center transition-all duration-200 ease-out animate-bounce-in"
+        className="bg-black bg-opacity-60 p-3 sm:p-4 md:p-6 rounded-xl md:rounded-2xl border-2 md:border-3 border-gray-700 transition-all duration-200 ease-out"
         style={{
           animation: 'bounce-in 0.3s ease-out',
         }}
       >
-        {/* 피드백 메시지 */}
-        <div
-          className="text-7xl font-black mb-3 drop-shadow-2xl"
-          style={{
-            color: feedback.color,
-            textShadow: `0 0 30px ${feedback.color}80, 0 0 60px ${feedback.color}40`,
-          }}
-        >
-          {feedback.category.toUpperCase()}
-        </div>
-
-        {/* 편차 표시 */}
-        <div className="flex items-center justify-center gap-4 mb-3">
+        <div className="flex flex-col items-center gap-2 sm:gap-3">
+          {/* 타이밍 평가 동그라미 */}
           <div
-            className="text-4xl font-bold bg-black bg-opacity-70 px-6 py-3 rounded-xl"
-            style={{ color: feedback.color }}
+            className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full transition-all duration-200"
+            style={{
+              backgroundColor: feedback.color,
+              boxShadow: `0 0 30px ${feedback.color}, 0 0 50px ${feedback.color}80`,
+            }}
+          />
+
+          {/* 타이밍 차이 값 */}
+          <div
+            className="text-xl sm:text-2xl md:text-3xl font-bold px-3 py-1 rounded-lg"
+            style={{
+              color: feedback.color,
+              textShadow: `0 0 10px ${feedback.color}80`,
+            }}
           >
             {feedback.displayText}
           </div>
-
-          {/* 방향 표시 */}
-          {feedback.direction !== 'on-time' && (
-            <div
-              className="text-3xl"
-              style={{
-                color: feedback.direction === 'early' ? '#3b82f6' : '#f59e0b',
-              }}
-            >
-              {feedback.direction === 'early' ? '⬆️ 빠름' : '⬇️ 느림'}
-            </div>
-          )}
         </div>
-
-        {/* 점수 표시 */}
-        {currentPoints !== undefined && (
-          <div className="text-2xl font-bold text-white bg-black bg-opacity-70 px-5 py-2 rounded-lg inline-block">
-            +{currentPoints.toFixed(0)} 점
-          </div>
-        )}
       </div>
-
-      {/* 연속 성공 표시 */}
-      {showStreak && streak >= 3 && (
-        <div className="mt-8 text-center animate-pulse">
-          <div className="text-4xl font-bold text-yellow-400 drop-shadow-lg">
-            🔥 {streak} 연속!
-          </div>
-        </div>
-      )}
-
-      {/* 평균 점수 표시 */}
-      {averagePoints !== undefined && (
-        <div className="mt-4 text-center">
-          <div className="text-2xl font-medium text-white bg-black bg-opacity-50 px-4 py-2 rounded-lg inline-block">
-            평균: {averagePoints.toFixed(1)} 점
-          </div>
-        </div>
-      )}
     </div>
   );
 }

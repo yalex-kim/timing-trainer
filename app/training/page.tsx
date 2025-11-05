@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { TrainingType, BodyPart, TrainingRange } from '@/types';
+import { TrainingType, BodyPart, TrainingRange, CustomBodyPart } from '@/types';
 import {
   BeatData,
   InputEvent,
@@ -12,10 +12,12 @@ import {
   TimingFeedback as TimingFeedbackType,
 } from '@/types/evaluation';
 import { PatternGenerator, TimingEvaluator } from '@/utils/evaluator';
+import { createNavigationHandlers } from '@/utils/commonHelpers';
 import { useInputHandler } from '@/hooks/useInputHandler';
-import TimingFeedback from '@/components/TimingFeedback';
+import { useAudioBeep } from '@/hooks/useAudioBeep';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import SessionResults from '@/components/SessionResults';
-import { ExpectedInputDisplay } from '@/components/TimingFeedback';
+import { TrainingDisplay } from '@/components/TrainingDisplay';
 
 function TrainingContent() {
   const router = useRouter();
@@ -27,8 +29,24 @@ function TrainingContent() {
   const bpm = parseInt(searchParams.get('bpm') || '60');
   const duration = parseInt(searchParams.get('duration') || '1');
 
-  // 훈련 패턴 결정
-  const pattern = PatternGenerator.settingsToPattern(bodyPart, trainingRange);
+  // 커스텀 시퀀스 파싱
+  const customSequenceParam = searchParams.get('customSequence');
+  const customSequence: CustomBodyPart[] | null = useMemo(() => {
+    if (!customSequenceParam) return null;
+    try {
+      const parsed = JSON.parse(customSequenceParam);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : null;
+    } catch (error) {
+      console.error('Failed to parse custom sequence:', error);
+      return null;
+    }
+  }, [customSequenceParam]);
+
+  // 훈련 패턴 결정 (커스텀 시퀀스가 있으면 null)
+  const pattern = useMemo(() => {
+    if (customSequence) return null;
+    return PatternGenerator.settingsToPattern(bodyPart, trainingRange);
+  }, [customSequence, bodyPart, trainingRange]);
 
   // 상태 관리
   const [session, setSession] = useState<TrainingSession | null>(null);
@@ -42,57 +60,45 @@ function TrainingContent() {
   const [currentSide, setCurrentSide] = useState<'left' | 'right'>('left');
   const [isActive, setIsActive] = useState(false);
 
+  // Custom hooks
+  const { userProfile } = useUserProfile();
+  const { playBeep } = useAudioBeep();
+  const { handleExit, handleRestart } = createNavigationHandlers(router);
+
   const intervalMs = 60000 / bpm;
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
   const startTimeRef = useRef<number>(0);
   const sessionRef = useRef<TrainingSession | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
 
   // sessionRef 동기화
   useEffect(() => {
     sessionRef.current = session;
   }, [session]);
 
-  // AudioContext 초기화 (재사용)
-  useEffect(() => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
-  }, []);
-
-  // 오디오 비프음
-  const playBeep = useCallback(() => {
-    if (!audioContextRef.current) return;
-
-    const audioContext = audioContextRef.current;
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    oscillator.frequency.value = 1200;
-    oscillator.type = 'sine';
-
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.1);
-  }, []);
-
   // 세션 초기화
   useEffect(() => {
+    if (!userProfile) return; // 사용자 프로필 로드 대기
+    if (!customSequence && !pattern) return; // 패턴 또는 커스텀 시퀀스 로드 대기
+
     startTimeRef.current = performance.now();
     const beats: BeatData[] = [];
 
     for (let i = 0; i < totalBeats; i++) {
-      const expectedInput = PatternGenerator.generateExpectedInput(pattern, i);
+      let expectedInput;
+
+      if (customSequence) {
+        // 커스텀 시퀀스 모드
+        const sequenceIndex = i % customSequence.length;
+        const part = customSequence[sequenceIndex];
+        expectedInput = {
+          expectedTypes: [part as InputType],
+          description: part,
+        };
+      } else {
+        // 기존 패턴 모드
+        expectedInput = PatternGenerator.generateExpectedInput(pattern, i);
+      }
+
       beats.push({
         beatNumber: i,
         expectedTime: i * intervalMs,
@@ -111,20 +117,22 @@ function TrainingContent() {
       sessionNumber: 0,
       date: new Date().toISOString(),
       startTime: Date.now(),
+      userProfile,
       settings: {
         trainingType,
         bodyPart,
         trainingRange,
         bpm,
         durationMinutes: duration,
-        pattern,
+        pattern: customSequence ? customSequence : pattern,
+        customSequence,
       },
       beats,
     };
 
     setSession(newSession);
     setIsRunning(true);
-  }, [totalBeats, pattern, intervalMs, trainingType, bodyPart, trainingRange, bpm, duration]);
+  }, [totalBeats, pattern, customSequence, intervalMs, trainingType, bodyPart, trainingRange, bpm, duration, userProfile]);
 
   // 입력 처리
   const handleInput = useCallback((inputEvent: InputEvent) => {
@@ -311,8 +319,12 @@ function TrainingContent() {
 
     setIsRunning(false);
 
-    // 최신 세션 데이터로 평가
-    const results = TimingEvaluator.evaluateSession(currentSession.beats);
+    // 최신 세션 데이터로 평가 (나이와 모드 기반)
+    const results = TimingEvaluator.evaluateSession(
+      currentSession.beats,
+      currentSession.userProfile.age!,
+      currentSession.settings.trainingType
+    );
 
     setSession((prev) => {
       if (!prev) return prev;
@@ -322,24 +334,11 @@ function TrainingContent() {
     setShowResults(true);
 
     console.log('Session finished:', results);
+    console.log('User age:', currentSession.userProfile.age);
+    console.log('Training mode:', currentSession.settings.trainingType);
     console.log('Total beats:', currentSession.beats.length);
     console.log('Beats with input:', currentSession.beats.filter(b => b.actualInput !== null).length);
   }, []);
-
-  // 시간 포맷팅
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handleExit = () => {
-    router.push('/');
-  };
-
-  const handleRestart = () => {
-    window.location.reload();
-  };
 
   // 결과 화면
   if (showResults && session?.results) {
@@ -356,203 +355,40 @@ function TrainingContent() {
   const currentBeatData = session?.beats[currentBeat];
   const nextBeatData = session?.beats[currentBeat + 1];
 
-  // 시각 훈련 모드
-  if (trainingType === 'visual') {
-    const shouldShowLeft = trainingRange === 'left' || trainingRange === 'both';
-    const shouldShowRight = trainingRange === 'right' || trainingRange === 'both';
-    const leftActive = isActive && (trainingRange === 'left' || (trainingRange === 'both' && currentSide === 'left'));
-    const rightActive = isActive && (trainingRange === 'right' || (trainingRange === 'both' && currentSide === 'right'));
+  // 터치 핸들러
+  const handleLeftTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const inputType = bodyPart === 'hand' ? 'left-hand' : 'left-foot';
+    handleTouchInput(inputType as InputType);
+  };
 
-    // 터치 핸들러
-    const handleLeftTouch = (e: React.TouchEvent) => {
-      e.preventDefault();
-      const inputType = bodyPart === 'hand' ? 'left-hand' : 'left-foot';
-      handleTouchInput(inputType as InputType);
-    };
+  const handleRightTouch = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const inputType = bodyPart === 'hand' ? 'right-hand' : 'right-foot';
+    handleTouchInput(inputType as InputType);
+  };
 
-    const handleRightTouch = (e: React.TouchEvent) => {
-      e.preventDefault();
-      const inputType = bodyPart === 'hand' ? 'right-hand' : 'right-foot';
-      handleTouchInput(inputType as InputType);
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black">
-        {/* 상단 정보 */}
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {bpm} BPM | {formatTime(timeRemaining)}
-          </div>
-          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
-            {currentBeat} / {totalBeats}
-          </div>
-          <button
-            onClick={handleExit}
-            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* 실시간 피드백 */}
-        {currentFeedback && (
-          <TimingFeedback
-            feedback={currentFeedback}
-            currentPoints={currentFeedback.points}
-          />
-        )}
-
-        {/* 예상 입력 표시 */}
-        {currentBeatData && (
-          <ExpectedInputDisplay
-            expectedInputs={currentBeatData.expectedInput.expectedTypes}
-            nextInputs={nextBeatData?.expectedInput.expectedTypes}
-          />
-        )}
-
-        {/* 시각 영역 (터치 가능) */}
-        <div className="h-full flex">
-          {shouldShowLeft && (
-            <div
-              onTouchStart={handleLeftTouch}
-              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 cursor-pointer ${
-                leftActive ? 'bg-green-400 border-yellow-300' : 'bg-green-700 border-white'
-              }`}
-            >
-              {trainingRange === 'left' && (
-                <div className="text-white text-9xl pointer-events-none">
-                  {bodyPart === 'hand' ? '✋' : '🦶'}
-                  <div className="text-4xl mt-4">왼쪽</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {trainingRange === 'both' && (
-            <div className="flex flex-col items-center justify-center bg-gray-800 px-8 pointer-events-none">
-              <div className="text-white text-9xl mb-4">
-                {bodyPart === 'hand' ? '👐' : '👣'}
-              </div>
-              <div className="text-white text-3xl">양쪽</div>
-            </div>
-          )}
-
-          {shouldShowRight && (
-            <div
-              onTouchStart={handleRightTouch}
-              className={`flex-1 transition-all duration-100 flex items-center justify-center border-4 cursor-pointer ${
-                rightActive ? 'bg-red-400 border-yellow-300' : 'bg-red-700 border-white'
-              }`}
-            >
-              {trainingRange === 'right' && (
-                <div className="text-white text-9xl pointer-events-none">
-                  {bodyPart === 'hand' ? '🤚' : '🦶'}
-                  <div className="text-4xl mt-4">오른쪽</div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // 청각 훈련 모드 (시각 모드와 동일한 UI)
-  if (trainingType === 'audio') {
-    const shouldShowLeft = trainingRange === 'left' || trainingRange === 'both';
-    const shouldShowRight = trainingRange === 'right' || trainingRange === 'both';
-
-    // 터치 핸들러
-    const handleLeftTouch = (e: React.TouchEvent) => {
-      e.preventDefault();
-      const inputType = bodyPart === 'hand' ? 'left-hand' : 'left-foot';
-      handleTouchInput(inputType as InputType);
-    };
-
-    const handleRightTouch = (e: React.TouchEvent) => {
-      e.preventDefault();
-      const inputType = bodyPart === 'hand' ? 'right-hand' : 'right-foot';
-      handleTouchInput(inputType as InputType);
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black">
-        {/* 상단 정보 */}
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-          <div className="text-white text-2xl font-bold bg-black bg-opacity-50 px-4 py-2 rounded">
-            {bpm} BPM | {formatTime(timeRemaining)}
-          </div>
-          <div className="text-white text-lg bg-black bg-opacity-50 px-3 py-2 rounded">
-            {currentBeat} / {totalBeats}
-          </div>
-          <button
-            onClick={handleExit}
-            className="bg-red-500 hover:bg-red-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* 실시간 피드백 */}
-        {currentFeedback && (
-          <TimingFeedback
-            feedback={currentFeedback}
-            currentPoints={currentFeedback.points}
-          />
-        )}
-
-        {/* 예상 입력 표시 */}
-        {currentBeatData && (
-          <ExpectedInputDisplay
-            expectedInputs={currentBeatData.expectedInput.expectedTypes}
-            nextInputs={nextBeatData?.expectedInput.expectedTypes}
-          />
-        )}
-
-        {/* 청각 영역 (시각 모드와 동일, 터치 가능) */}
-        <div className="h-full flex">
-          {shouldShowLeft && (
-            <div
-              onTouchStart={handleLeftTouch}
-              className="flex-1 transition-all duration-100 flex items-center justify-center border-4 bg-green-700 border-white cursor-pointer"
-            >
-              {trainingRange === 'left' && (
-                <div className="text-white text-9xl pointer-events-none">
-                  {bodyPart === 'hand' ? '✋' : '🦶'}
-                  <div className="text-4xl mt-4">왼쪽</div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {trainingRange === 'both' && (
-            <div className="flex flex-col items-center justify-center bg-gray-800 px-8 pointer-events-none">
-              <div className="text-white text-9xl mb-4">
-                {bodyPart === 'hand' ? '👐' : '👣'}
-              </div>
-              <div className="text-white text-3xl">양쪽</div>
-            </div>
-          )}
-
-          {shouldShowRight && (
-            <div
-              onTouchStart={handleRightTouch}
-              className="flex-1 transition-all duration-100 flex items-center justify-center border-4 bg-red-700 border-white cursor-pointer"
-            >
-              {trainingRange === 'right' && (
-                <div className="text-white text-9xl pointer-events-none">
-                  {bodyPart === 'hand' ? '🤚' : '🦶'}
-                  <div className="text-4xl mt-4">오른쪽</div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return null;
+  // 훈련 화면 (시각/청각 모두 동일한 컴포넌트 사용)
+  return (
+    <TrainingDisplay
+      trainingType={trainingType}
+      bodyPart={bodyPart}
+      trainingRange={trainingRange}
+      bpm={bpm}
+      timeRemaining={timeRemaining}
+      currentBeat={currentBeat}
+      totalBeats={totalBeats}
+      isActive={isActive}
+      currentSide={currentSide}
+      currentFeedback={currentFeedback}
+      currentBeatData={currentBeatData}
+      nextBeatData={nextBeatData}
+      onLeftTouch={handleLeftTouch}
+      onRightTouch={handleRightTouch}
+      onExit={handleExit}
+      customSequence={customSequence}
+    />
+  );
 }
 
 export default function TrainingPage() {
