@@ -33,60 +33,72 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
     setIsExporting(true);
     try {
+      // 원본 DOM의 모든 요소를 먼저 수집 (onclone에서 매칭하기 위해)
+      const originalElements = Array.from(reportRef.current.querySelectorAll('*'));
+
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
-        // 핵심: CSS는 모두 유지, CSS 변수만 RGB로 오버라이드
+        logging: false,
+        // 가이드 접근법: computed style을 인라인으로 적용
         onclone: (clonedDoc) => {
-          // 1. 원본 문서에서 계산된 모든 색상 변수를 수집
-          const rootStyle = window.getComputedStyle(document.documentElement);
-          const colorOverrides: string[] = [];
+          // 복제된 요소들도 배열로 수집
+          const clonedElements = Array.from(clonedDoc.querySelectorAll('*'));
 
-          // Tailwind CSS v4의 주요 색상 변수들
-          const colorNames = [
-            'red', 'orange', 'amber', 'yellow', 'lime', 'green',
-            'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo',
-            'violet', 'purple', 'fuchsia', 'pink', 'rose',
-            'slate', 'gray', 'zinc', 'neutral', 'stone'
-          ];
-          const shades = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
+          // 원본과 복제본은 같은 순서이므로 인덱스로 매칭
+          clonedElements.forEach((clonedEl, index) => {
+            if (clonedEl instanceof HTMLElement && originalElements[index]) {
+              // 원본 요소의 computed style 가져오기 (oklch가 자동으로 RGB로 변환됨)
+              const computed = window.getComputedStyle(originalElements[index] as Element);
 
-          colorNames.forEach((colorName) => {
-            shades.forEach((shade) => {
-              const varName = `--color-${colorName}-${shade}`;
-              const value = rootStyle.getPropertyValue(varName);
-              if (value) {
-                // computed 값은 이미 RGB 형식
-                colorOverrides.push(`${varName}: ${value} !important;`);
+              // 주요 스타일 속성들을 인라인으로 적용
+              // 색상
+              clonedEl.style.color = computed.color;
+              clonedEl.style.backgroundColor = computed.backgroundColor;
+
+              // Border
+              clonedEl.style.borderColor = computed.borderColor;
+              clonedEl.style.borderWidth = computed.borderWidth;
+              clonedEl.style.borderStyle = computed.borderStyle;
+              clonedEl.style.borderRadius = computed.borderRadius;
+
+              // Typography
+              clonedEl.style.fontSize = computed.fontSize;
+              clonedEl.style.fontWeight = computed.fontWeight;
+              clonedEl.style.fontFamily = computed.fontFamily;
+              clonedEl.style.lineHeight = computed.lineHeight;
+              clonedEl.style.textAlign = computed.textAlign;
+
+              // Layout
+              clonedEl.style.display = computed.display;
+              clonedEl.style.position = computed.position;
+              clonedEl.style.width = computed.width;
+              clonedEl.style.height = computed.height;
+
+              // Spacing
+              clonedEl.style.padding = computed.padding;
+              clonedEl.style.margin = computed.margin;
+
+              // Other
+              clonedEl.style.boxShadow = computed.boxShadow;
+              clonedEl.style.opacity = computed.opacity;
+
+              // Flexbox (부모가 flex인 경우)
+              if (computed.display === 'flex') {
+                clonedEl.style.flexDirection = computed.flexDirection;
+                clonedEl.style.justifyContent = computed.justifyContent;
+                clonedEl.style.alignItems = computed.alignItems;
+                clonedEl.style.gap = computed.gap;
               }
-            });
-          });
 
-          // 2. 모든 <style> 태그의 내용에서 oklch를 rgb로 치환
-          const styleElements = clonedDoc.querySelectorAll('style');
-          styleElements.forEach((styleElement) => {
-            if (styleElement.textContent) {
-              styleElement.textContent = styleElement.textContent.replace(
-                /oklch\([^)]+\)/gi,
-                'rgb(128, 128, 128)'
-              );
-            }
-          });
-
-          // 3. 최우선 순위로 CSS 변수를 RGB로 오버라이드하는 style 태그 추가
-          //    (link 태그는 유지 - Tailwind 유틸리티 클래스 필요)
-          const overrideStyle = clonedDoc.createElement('style');
-          overrideStyle.textContent = `:root { ${colorOverrides.join(' ')} }`;
-          clonedDoc.head.appendChild(overrideStyle);
-
-          // 4. 인라인 스타일의 oklch도 치환
-          const allElements = clonedDoc.querySelectorAll('*');
-          allElements.forEach((element) => {
-            if (element instanceof HTMLElement && element.style.length > 0) {
-              const styleText = element.getAttribute('style') || '';
-              if (styleText.includes('oklch')) {
-                element.setAttribute('style', styleText.replace(/oklch\([^)]+\)/gi, 'rgb(128, 128, 128)'));
+              // SVG 요소
+              if (clonedEl.tagName.toLowerCase() === 'svg' ||
+                  clonedEl.tagName.toLowerCase() === 'path' ||
+                  clonedEl.tagName.toLowerCase() === 'circle' ||
+                  clonedEl.tagName.toLowerCase() === 'rect') {
+                clonedEl.style.fill = computed.fill;
+                clonedEl.style.stroke = computed.stroke;
               }
             }
           });
