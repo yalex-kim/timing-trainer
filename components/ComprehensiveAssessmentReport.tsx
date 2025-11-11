@@ -33,131 +33,60 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
     setIsExporting(true);
     try {
-      // 원본 문서의 모든 요소를 먼저 배열로 수집
-      const originalElements = Array.from(reportRef.current.querySelectorAll('*'));
-
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
-        // 완전한 해결책: 모든 CSS 제거하고 computed 스타일만 인라인으로 적용
+        // 핵심: CSS는 모두 유지, CSS 변수만 RGB로 오버라이드
         onclone: (clonedDoc) => {
-          // 1. 모든 CSS 소스 완전 제거 (oklch의 모든 가능한 소스 차단)
-          clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach((link) => link.remove());
-          clonedDoc.querySelectorAll('style').forEach((style) => style.remove());
+          // 1. 원본 문서에서 계산된 모든 색상 변수를 수집
+          const rootStyle = window.getComputedStyle(document.documentElement);
+          const colorOverrides: string[] = [];
 
-          // 2. 각 요소의 스타일을 computed 값으로 완전히 대체
-          const clonedElements = Array.from(clonedDoc.querySelectorAll('*'));
+          // Tailwind CSS v4의 주요 색상 변수들
+          const colorNames = [
+            'red', 'orange', 'amber', 'yellow', 'lime', 'green',
+            'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo',
+            'violet', 'purple', 'fuchsia', 'pink', 'rose',
+            'slate', 'gray', 'zinc', 'neutral', 'stone'
+          ];
+          const shades = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
 
-          clonedElements.forEach((element, index) => {
-            if (element instanceof HTMLElement && originalElements[index]) {
-              const computedStyle = window.getComputedStyle(originalElements[index] as Element);
+          colorNames.forEach((colorName) => {
+            shades.forEach((shade) => {
+              const varName = `--color-${colorName}-${shade}`;
+              const value = rootStyle.getPropertyValue(varName);
+              if (value) {
+                // computed 값은 이미 RGB 형식
+                colorOverrides.push(`${varName}: ${value} !important;`);
+              }
+            });
+          });
 
-              // 기존 style 속성 완전히 제거 (oklch가 있을 수 있음)
-              element.removeAttribute('style');
+          // 2. 모든 <style> 태그의 내용에서 oklch를 rgb로 치환
+          const styleElements = clonedDoc.querySelectorAll('style');
+          styleElements.forEach((styleElement) => {
+            if (styleElement.textContent) {
+              styleElement.textContent = styleElement.textContent.replace(
+                /oklch\([^)]+\)/gi,
+                'rgb(128, 128, 128)'
+              );
+            }
+          });
 
-              // 필수 스타일 속성들을 computed 값으로 설정
-              const importantProps = [
-                // 색상
-                'color',
-                'backgroundColor',
-                'borderColor',
-                'borderTopColor',
-                'borderRightColor',
-                'borderBottomColor',
-                'borderLeftColor',
-                // 레이아웃
-                'display',
-                'position',
-                'top',
-                'right',
-                'bottom',
-                'left',
-                'width',
-                'height',
-                'minWidth',
-                'minHeight',
-                'maxWidth',
-                'maxHeight',
-                'margin',
-                'marginTop',
-                'marginRight',
-                'marginBottom',
-                'marginLeft',
-                'padding',
-                'paddingTop',
-                'paddingRight',
-                'paddingBottom',
-                'paddingLeft',
-                // Border
-                'borderWidth',
-                'borderStyle',
-                'borderRadius',
-                'borderTopWidth',
-                'borderRightWidth',
-                'borderBottomWidth',
-                'borderLeftWidth',
-                // Flexbox
-                'flexDirection',
-                'flexWrap',
-                'justifyContent',
-                'alignItems',
-                'alignContent',
-                'flex',
-                'flexGrow',
-                'flexShrink',
-                'flexBasis',
-                'gap',
-                // Grid
-                'gridTemplateColumns',
-                'gridTemplateRows',
-                'gridColumn',
-                'gridRow',
-                // Typography
-                'fontSize',
-                'fontWeight',
-                'fontFamily',
-                'lineHeight',
-                'textAlign',
-                'textDecoration',
-                'textTransform',
-                'letterSpacing',
-                'whiteSpace',
-                // Other
-                'opacity',
-                'visibility',
-                'overflow',
-                'boxShadow',
-                'transform',
-                'zIndex',
-              ];
+          // 3. 최우선 순위로 CSS 변수를 RGB로 오버라이드하는 style 태그 추가
+          //    (link 태그는 유지 - Tailwind 유틸리티 클래스 필요)
+          const overrideStyle = clonedDoc.createElement('style');
+          overrideStyle.textContent = `:root { ${colorOverrides.join(' ')} }`;
+          clonedDoc.head.appendChild(overrideStyle);
 
-              importantProps.forEach((prop) => {
-                const value = computedStyle.getPropertyValue(prop);
-                // var() 참조와 oklch는 제외하고 실제 계산된 값만 사용
-                if (value &&
-                    value !== 'none' &&
-                    value !== 'auto' &&
-                    value !== 'normal' &&
-                    value !== 'transparent' &&
-                    value !== 'rgba(0, 0, 0, 0)' &&
-                    !value.includes('var(') &&
-                    !value.includes('oklch')) {
-                  element.style.setProperty(prop, value, 'important');
-                }
-              });
-
-              // SVG 요소는 fill과 stroke 추가 처리
-              if (element.tagName === 'svg' || element.tagName === 'path' || element.tagName === 'circle' || element.tagName === 'rect') {
-                const fill = computedStyle.getPropertyValue('fill');
-                if (fill && fill !== 'none' && !fill.includes('oklch')) {
-                  element.style.setProperty('fill', fill, 'important');
-                }
-
-                const stroke = computedStyle.getPropertyValue('stroke');
-                if (stroke && stroke !== 'none' && !stroke.includes('oklch')) {
-                  element.style.setProperty('stroke', stroke, 'important');
-                }
+          // 4. 인라인 스타일의 oklch도 치환
+          const allElements = clonedDoc.querySelectorAll('*');
+          allElements.forEach((element) => {
+            if (element instanceof HTMLElement && element.style.length > 0) {
+              const styleText = element.getAttribute('style') || '';
+              if (styleText.includes('oklch')) {
+                element.setAttribute('style', styleText.replace(/oklch\([^)]+\)/gi, 'rgb(128, 128, 128)'));
               }
             }
           });
