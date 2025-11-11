@@ -27,62 +27,20 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // PDF Export using html-to-image (브라우저 렌더링 결과를 직접 캡처)
-  const handleExportPDF = async () => {
-    if (!reportRef.current) return;
+  // 각 섹션에 대한 ref
+  const headerRef = useRef<HTMLDivElement>(null);
+  const section1Ref = useRef<HTMLDivElement>(null);
+  const section2Ref = useRef<HTMLDivElement>(null);
+  const section3Ref = useRef<HTMLDivElement>(null);
+  const section4Ref = useRef<HTMLDivElement>(null);
+  const section5Ref = useRef<HTMLDivElement>(null);
+  const section6Ref = useRef<HTMLDivElement>(null);
+  const section7Ref = useRef<HTMLDivElement>(null);
 
+  // PDF Export using html-to-image (섹션별 개별 캡처)
+  const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      const originalElement = reportRef.current;
-
-      // 방법 2 개선: 임시 래퍼 생성 + 클래스 제거
-      const wrapper = document.createElement('div');
-      wrapper.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        z-index: -9999;
-        background: white;
-        width: fit-content;
-        max-width: 100vw;
-      `;
-
-      // 요소 복제
-      const clone = originalElement.cloneNode(true) as HTMLElement;
-
-      // 문제의 클래스들을 명시적으로 제거
-      clone.classList.remove('mx-auto');   // 중앙정렬 margin 제거
-      clone.classList.remove('max-w-6xl'); // max-width 제약 제거
-
-      // 명시적 너비 설정 (원본 요소의 실제 너비)
-      const originalWidth = originalElement.offsetWidth;
-      clone.style.width = `${originalWidth}px`;
-      clone.style.margin = '0';
-      clone.style.maxWidth = 'none';
-
-      // 래퍼에 추가
-      wrapper.appendChild(clone);
-      document.body.appendChild(wrapper);
-
-      // 렌더링 대기
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // 캡처
-      const dataUrl = await toPng(clone, {
-        quality: 0.95,
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-        cacheBust: true,
-      });
-
-      // 정리
-      document.body.removeChild(wrapper);
-
-      // Canvas를 이용한 정확한 페이지 분할
-      const img = new Image();
-      img.src = dataUrl;
-      await new Promise((resolve) => { img.onload = resolve; });
-
       // PDF 설정
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = 210;
@@ -97,62 +55,63 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
       const contentWidth = pageWidth - margin.left - margin.right;
       const contentHeight = pageHeight - margin.top - margin.bottom;
 
-      // 이미지 스케일 계산 (너비 기준)
-      const scale = contentWidth / img.width;
+      // 섹션별 ref 목록
+      const sections = [
+        { ref: headerRef, name: 'header', forceNewPage: false },
+        { ref: section1Ref, name: 'section1', forceNewPage: false },
+        { ref: section2Ref, name: 'section2', forceNewPage: false },
+        { ref: section3Ref, name: 'section3', forceNewPage: false },
+        { ref: section4Ref, name: 'section4', forceNewPage: false },
+        { ref: section5Ref, name: 'section5', forceNewPage: false },
+        { ref: section6Ref, name: 'section6', forceNewPage: true },  // 페이지 2 시작
+        { ref: section7Ref, name: 'section7', forceNewPage: false },
+      ];
 
-      // Canvas 생성
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas context not available');
+      let currentPageY = 0; // 현재 페이지에서 사용한 높이 (mm)
+      let isFirstPage = true;
 
-      canvas.width = img.width;
+      for (const section of sections) {
+        if (!section.ref.current) continue;
 
-      let currentY = 0;
-      let pageNum = 0;
+        // 섹션 캡처
+        const dataUrl = await toPng(section.ref.current, {
+          quality: 0.95,
+          pixelRatio: 2,
+          backgroundColor: '#ffffff',
+          cacheBust: true,
+        });
 
-      // 페이지별로 분할
-      while (currentY < img.height) {
-        if (pageNum > 0) {
+        // 이미지 로드
+        const img = new Image();
+        img.src = dataUrl;
+        await new Promise((resolve) => { img.onload = resolve; });
+
+        // 이미지 스케일 계산 (너비 기준으로 contentWidth에 맞춤)
+        const scale = contentWidth / img.width;
+        const sectionHeight = img.height * scale; // mm 단위
+
+        // 새 페이지가 필요한지 확인
+        const needsNewPage = section.forceNewPage ||
+                             (!isFirstPage && currentPageY + sectionHeight > contentHeight);
+
+        if (needsNewPage) {
           pdf.addPage();
+          currentPageY = 0;
+          isFirstPage = false;
         }
 
-        // 이번 페이지에서 그릴 높이 (픽셀)
-        const drawHeight = Math.min(
-          contentHeight / scale,
-          img.height - currentY
-        );
-
-        canvas.height = Math.ceil(drawHeight);
-
-        // 흰색 배경
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // 이미지의 해당 부분만 그리기
-        ctx.drawImage(
-          img,
-          0, currentY,              // source x, y
-          img.width, drawHeight,    // source width, height
-          0, 0,                     // destination x, y
-          img.width, drawHeight     // destination width, height
-        );
-
-        // Canvas를 이미지로 변환
-        const pageDataUrl = canvas.toDataURL('image/png', 0.95);
-
-        // PDF에 추가
-        const pdfPageHeight = drawHeight * scale;
+        // 섹션 이미지를 PDF에 추가
         pdf.addImage(
-          pageDataUrl,
+          dataUrl,
           'PNG',
           margin.left,
-          margin.top,
+          margin.top + currentPageY,
           contentWidth,
-          pdfPageHeight
+          sectionHeight
         );
 
-        currentY += drawHeight;
-        pageNum++;
+        currentPageY += sectionHeight;
+        isFirstPage = false;
       }
 
       pdf.save(`${report.patientInfo.name}_타이밍검사_${report.patientInfo.testDate}.pdf`);
@@ -266,7 +225,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
       {/* 보고서 내용 - PDF로 캡처될 영역 */}
       <div ref={reportRef} className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg p-6 md:p-8">
         {/* Header */}
-        <div className="border-b-2 border-gray-300 pb-6 mb-8">
+        <div ref={headerRef} className="border-b-2 border-gray-300 pb-6 mb-8">
           <h1 className="text-3xl font-bold text-center text-gray-800 mb-4">
             종합 타이밍 검사 결과
           </h1>
@@ -293,7 +252,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 1: Processing Capability */}
-        <div className="mb-8">
+        <div ref={section1Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">1</span>
             시청각 학습능력
@@ -379,7 +338,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 2: Learning Style */}
-        <div className="mb-8">
+        <div ref={section2Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-purple-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">2</span>
             학습 스타일
@@ -416,7 +375,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 3: Attention */}
-        <div className="mb-8">
+        <div ref={section3Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">3</span>
             시청각 주의력
@@ -494,7 +453,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 4: Brain Speed */}
-        <div className="mb-8">
+        <div ref={section4Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">4</span>
             뇌 인지속도
@@ -536,7 +495,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 5: Sustainability */}
-        <div className="mb-8">
+        <div ref={section5Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-teal-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">5</span>
             지속성
@@ -628,7 +587,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 6: Hemisphere Balance */}
-        <div className="mb-8">
+        <div ref={section6Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-indigo-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">6</span>
             좌우뇌 균형도
@@ -676,7 +635,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Individual Test Results */}
-        <div className="mb-8">
+        <div ref={section7Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">개별 검사 결과</h2>
 
           <div className="overflow-x-auto">
