@@ -55,16 +55,16 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
       const contentWidth = pageWidth - margin.left - margin.right;
       const contentHeight = pageHeight - margin.top - margin.bottom;
 
-      // 섹션별 ref 목록
+      // 섹션별 ref 목록 (spacing: 섹션 아래에 추가할 여백 mm)
       const sections = [
-        { ref: headerRef, name: 'header', forceNewPage: false },
-        { ref: section1Ref, name: 'section1', forceNewPage: false },
-        { ref: section2Ref, name: 'section2', forceNewPage: false },
-        { ref: section3Ref, name: 'section3', forceNewPage: false },
-        { ref: section4Ref, name: 'section4', forceNewPage: false },
-        { ref: section5Ref, name: 'section5', forceNewPage: false },
-        { ref: section6Ref, name: 'section6', forceNewPage: true },  // 페이지 2 시작
-        { ref: section7Ref, name: 'section7', forceNewPage: false },
+        { ref: headerRef, name: 'header', forceNewPage: false, spacing: 8 },
+        { ref: section1Ref, name: 'section1', forceNewPage: false, spacing: 8 },
+        { ref: section2Ref, name: 'section2', forceNewPage: false, spacing: 8 },
+        { ref: section3Ref, name: 'section3', forceNewPage: false, spacing: 8 },
+        { ref: section4Ref, name: 'section4', forceNewPage: false, spacing: 8 },
+        { ref: section5Ref, name: 'section5', forceNewPage: false, spacing: 8 },
+        { ref: section6Ref, name: 'section6', forceNewPage: true, spacing: 8 },  // 페이지 2 시작
+        { ref: section7Ref, name: 'section7', forceNewPage: false, spacing: 0 },  // 마지막 섹션
       ];
 
       let currentPageY = 0; // 현재 페이지에서 사용한 높이 (mm)
@@ -90,7 +90,8 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         const scale = contentWidth / img.width;
         const sectionHeight = img.height * scale; // mm 단위
 
-        // 새 페이지가 필요한지 확인
+        // 새 페이지가 필요한지 확인 (섹션 + 간격 포함)
+        const totalHeight = sectionHeight + section.spacing;
         const needsNewPage = section.forceNewPage ||
                              (!isFirstPage && currentPageY + sectionHeight > contentHeight);
 
@@ -110,7 +111,8 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
           sectionHeight
         );
 
-        currentPageY += sectionHeight;
+        // 섹션 높이 + 간격 추가
+        currentPageY += sectionHeight + section.spacing;
         isFirstPage = false;
       }
 
