@@ -78,35 +78,81 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
       // 정리
       document.body.removeChild(wrapper);
 
-      // PDF 생성 (A4 비율 + 여백)
+      // Canvas를 이용한 정확한 페이지 분할
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((resolve) => { img.onload = resolve; });
+
+      // PDF 설정
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgProps = pdf.getImageProperties(dataUrl);
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = {
+        top: 10,
+        bottom: 10,
+        left: 10,
+        right: 10,
+      };
 
-      // A4에 맞게 스케일 조정 (좌우 각 10mm 여백)
-      const maxWidth = 190;  // 210mm - 20mm 여백
-      const maxHeight = 277; // 297mm - 20mm 여백
+      const contentWidth = pageWidth - margin.left - margin.right;
+      const contentHeight = pageHeight - margin.top - margin.bottom;
 
-      let pdfWidth = maxWidth;
-      let pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      // 이미지 스케일 계산 (너비 기준)
+      const scale = contentWidth / img.width;
 
-      // 높이가 너무 크면 여러 페이지로 분할
-      if (pdfHeight > maxHeight) {
-        // 첫 페이지
-        pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, pdfHeight);
+      // Canvas 생성
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas context not available');
 
-        let heightLeft = pdfHeight - maxHeight;
-        let position = -maxHeight;
+      canvas.width = img.width;
 
-        // 추가 페이지
-        while (heightLeft > 0) {
+      let currentY = 0;
+      let pageNum = 0;
+
+      // 페이지별로 분할
+      while (currentY < img.height) {
+        if (pageNum > 0) {
           pdf.addPage();
-          pdf.addImage(dataUrl, 'PNG', 10, position, pdfWidth, pdfHeight);
-          heightLeft -= maxHeight;
-          position -= maxHeight;
         }
-      } else {
-        // 한 페이지에 수용 가능
-        pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, pdfHeight);
+
+        // 이번 페이지에서 그릴 높이 (픽셀)
+        const drawHeight = Math.min(
+          contentHeight / scale,
+          img.height - currentY
+        );
+
+        canvas.height = Math.ceil(drawHeight);
+
+        // 흰색 배경
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 이미지의 해당 부분만 그리기
+        ctx.drawImage(
+          img,
+          0, currentY,              // source x, y
+          img.width, drawHeight,    // source width, height
+          0, 0,                     // destination x, y
+          img.width, drawHeight     // destination width, height
+        );
+
+        // Canvas를 이미지로 변환
+        const pageDataUrl = canvas.toDataURL('image/png', 0.95);
+
+        // PDF에 추가
+        const pdfPageHeight = drawHeight * scale;
+        pdf.addImage(
+          pageDataUrl,
+          'PNG',
+          margin.left,
+          margin.top,
+          contentWidth,
+          pdfPageHeight
+        );
+
+        currentY += drawHeight;
+        pageNum++;
       }
 
       pdf.save(`${report.patientInfo.name}_타이밍검사_${report.patientInfo.testDate}.pdf`);
@@ -247,7 +293,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 1: Processing Capability */}
-        <div className="mb-8" style={{ pageBreakInside: 'avoid' }}>
+        <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">1</span>
             시청각 학습능력
@@ -333,7 +379,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 2: Learning Style */}
-        <div className="mb-8" style={{ pageBreakInside: 'avoid' }}>
+        <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-purple-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">2</span>
             학습 스타일
@@ -370,7 +416,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 3: Attention */}
-        <div className="mb-8" style={{ pageBreakInside: 'avoid' }}>
+        <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">3</span>
             시청각 주의력
@@ -448,7 +494,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 4: Brain Speed */}
-        <div className="mb-8" style={{ pageBreakInside: 'avoid' }}>
+        <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">4</span>
             뇌 인지속도
@@ -490,7 +536,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 5: Sustainability */}
-        <div className="mb-8" style={{ pageBreakInside: 'avoid' }}>
+        <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-teal-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">5</span>
             지속성
@@ -582,7 +628,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 6: Hemisphere Balance */}
-        <div className="mb-8" style={{ pageBreakBefore: 'always', pageBreakInside: 'avoid' }}>
+        <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-indigo-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">6</span>
             좌우뇌 균형도
@@ -630,7 +676,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Individual Test Results */}
-        <div className="mb-8" style={{ pageBreakInside: 'avoid' }}>
+        <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">개별 검사 결과</h2>
 
           <div className="overflow-x-auto">
