@@ -38,6 +38,9 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         quality: 0.95,
         pixelRatio: 2,
         backgroundColor: '#ffffff',
+        cacheBust: true, // 캐시 문제 방지
+        width: reportRef.current.scrollWidth, // 전체 너비 캡처
+        height: reportRef.current.scrollHeight, // 전체 높이 캡처
       });
 
       // PDF 생성
@@ -124,6 +127,60 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      {/* Action Buttons - PDF 캡처에서 제외 */}
+      <div className="max-w-6xl mx-auto mb-4 flex flex-wrap gap-4 justify-center">
+        {isSheetsConfigured && (
+          <button
+            onClick={handleExportGoogleSheets}
+            disabled={isExporting}
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
+            title="Google Sheets 데이터베이스에 저장 (시계열 분석용)"
+          >
+            <span>📈</span>
+            <span>{isExporting ? '저장 중...' : 'Google Sheets에 저장'}</span>
+          </button>
+        )}
+
+        <button
+          onClick={handleExportExcel}
+          disabled={isExporting}
+          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
+          title="Excel 파일로 다운로드 (리포트 형식)"
+        >
+          <span>📊</span>
+          <span>{isExporting ? '생성 중...' : 'Excel로 저장'}</span>
+        </button>
+
+        <button
+          onClick={handleExportPDF}
+          disabled={isExporting}
+          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
+          title="PDF 파일로 다운로드"
+        >
+          <span>📄</span>
+          <span>{isExporting ? '생성 중...' : 'PDF로 저장'}</span>
+        </button>
+
+        <button
+          onClick={onClose}
+          className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-bold transition-colors"
+        >
+          닫기
+        </button>
+      </div>
+
+      {!isSheetsConfigured && (
+        <div className="max-w-6xl mx-auto mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+          <p className="text-yellow-800">
+            💡 <strong>Google Sheets 저장 기능을 사용하려면:</strong>
+          </p>
+          <p className="text-yellow-700 mt-1">
+            <code className="bg-yellow-100 px-2 py-1 rounded">docs/GOOGLE_SHEETS_SETUP.md</code> 파일을 참고하여 설정하세요.
+          </p>
+        </div>
+      )}
+
+      {/* 보고서 내용 - PDF로 캡처될 영역 */}
       <div ref={reportRef} className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg p-6 md:p-8">
         {/* Header */}
         <div className="border-b-2 border-gray-300 pb-6 mb-8">
@@ -576,59 +633,6 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
             </table>
           </div>
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-4 justify-center mt-8 pt-6 border-t-2 border-gray-200">
-          {isSheetsConfigured && (
-            <button
-              onClick={handleExportGoogleSheets}
-              disabled={isExporting}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
-              title="Google Sheets 데이터베이스에 저장 (시계열 분석용)"
-            >
-              <span>📈</span>
-              <span>{isExporting ? '저장 중...' : 'Google Sheets에 저장'}</span>
-            </button>
-          )}
-
-          <button
-            onClick={handleExportExcel}
-            disabled={isExporting}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
-            title="Excel 파일로 다운로드 (리포트 형식)"
-          >
-            <span>📊</span>
-            <span>{isExporting ? '생성 중...' : 'Excel로 저장'}</span>
-          </button>
-
-          <button
-            onClick={handleExportPDF}
-            disabled={isExporting}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
-            title="PDF 파일로 다운로드"
-          >
-            <span>📄</span>
-            <span>{isExporting ? '생성 중...' : 'PDF로 저장'}</span>
-          </button>
-
-          <button
-            onClick={onClose}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-bold transition-colors"
-          >
-            닫기
-          </button>
-        </div>
-
-        {!isSheetsConfigured && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
-            <p className="text-yellow-800">
-              💡 <strong>Google Sheets 저장 기능을 사용하려면:</strong>
-            </p>
-            <p className="text-yellow-700 mt-1">
-              <code className="bg-yellow-100 px-2 py-1 rounded">docs/GOOGLE_SHEETS_SETUP.md</code> 파일을 참고하여 설정하세요.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
