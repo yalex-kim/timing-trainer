@@ -33,42 +33,39 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
     setIsExporting(true);
     try {
+      // 원본 문서의 모든 요소를 먼저 배열로 수집 (querySelector 문제 방지)
+      const originalElements = Array.from(reportRef.current.querySelectorAll('*'));
+
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
         // oklch 색상 문제 해결: 색상 속성만 computed 값으로 오버라이드
         onclone: (clonedDoc) => {
-          const allElements = clonedDoc.querySelectorAll('*');
-          allElements.forEach((element) => {
-            if (element instanceof HTMLElement) {
-              // 원본 요소 찾기
-              const originalElement = document.querySelector(
-                element.tagName +
-                (element.className ? '.' + element.className.split(' ').join('.') : '')
-              );
+          const clonedElements = Array.from(clonedDoc.querySelectorAll('*'));
 
-              if (originalElement) {
-                const computedStyle = window.getComputedStyle(originalElement);
+          // 원본과 클론된 요소는 같은 순서이므로 인덱스로 매칭
+          clonedElements.forEach((element, index) => {
+            if (element instanceof HTMLElement && originalElements[index]) {
+              const computedStyle = window.getComputedStyle(originalElements[index] as Element);
 
-                // 색상 관련 속성만 computed 값(RGB)으로 오버라이드
-                const colorProps = [
-                  'color',
-                  'backgroundColor',
-                  'borderColor',
-                  'borderTopColor',
-                  'borderRightColor',
-                  'borderBottomColor',
-                  'borderLeftColor',
-                ];
+              // 색상 관련 속성만 computed 값(RGB)으로 오버라이드
+              const colorProps = [
+                'color',
+                'backgroundColor',
+                'borderColor',
+                'borderTopColor',
+                'borderRightColor',
+                'borderBottomColor',
+                'borderLeftColor',
+              ];
 
-                colorProps.forEach((prop) => {
-                  const value = computedStyle.getPropertyValue(prop);
-                  if (value && value !== 'rgba(0, 0, 0, 0)' && value !== 'transparent') {
-                    element.style.setProperty(prop, value, 'important');
-                  }
-                });
-              }
+              colorProps.forEach((prop) => {
+                const value = computedStyle.getPropertyValue(prop);
+                if (value && value !== 'rgba(0, 0, 0, 0)' && value !== 'transparent') {
+                  element.style.setProperty(prop, value, 'important');
+                }
+              });
             }
           });
         },
