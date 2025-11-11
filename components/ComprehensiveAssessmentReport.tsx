@@ -33,18 +33,33 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
     setIsExporting(true);
     try {
-      // 실제 렌더링된 요소의 크기 가져오기 (여백 제외)
-      const rect = reportRef.current.getBoundingClientRect();
+      // 요소 복제 (화면 밖에서 처리하여 UI 깜빡임 방지)
+      const originalElement = reportRef.current;
+      const clonedElement = originalElement.cloneNode(true) as HTMLElement;
 
-      // html-to-image: 브라우저가 렌더링한 결과를 그대로 캡처 (oklch 파싱 문제 없음)
-      const dataUrl = await toPng(reportRef.current, {
+      // 복제본 스타일 설정: 화면 밖 + margin 제거
+      clonedElement.style.position = 'fixed';
+      clonedElement.style.left = '-9999px';
+      clonedElement.style.top = '0';
+      clonedElement.style.margin = '0';  // mx-auto 효과 제거
+      clonedElement.style.width = originalElement.offsetWidth + 'px';
+
+      // DOM에 추가
+      document.body.appendChild(clonedElement);
+
+      // 약간의 지연 (렌더링 완료 대기)
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // 복제본 캡처
+      const dataUrl = await toPng(clonedElement, {
         quality: 0.95,
         pixelRatio: 2,
         backgroundColor: '#ffffff',
         cacheBust: true,
-        width: rect.width,   // 실제 요소 너비만 (여백 제외)
-        height: rect.height, // 실제 요소 높이만
       });
+
+      // 복제본 제거
+      document.body.removeChild(clonedElement);
 
       // PDF 생성
       const pdf = new jsPDF('p', 'mm', 'a4');
