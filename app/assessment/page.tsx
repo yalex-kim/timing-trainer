@@ -527,18 +527,6 @@ function AssessmentContent() {
               검사 시작
             </button>
             <button
-              onClick={() => {
-                // 테스트용 더미 데이터로 결과 표시
-                const { generateMockAssessmentData } = require('@/utils/mockAssessmentData');
-                const mockSessions = generateMockAssessmentData();
-                setCompletedSessions(mockSessions);
-                setPhase('complete');
-              }}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg font-medium transition-colors"
-            >
-              [테스트] 결과 페이지 보기
-            </button>
-            <button
               onClick={handleExit}
               className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-lg font-medium transition-colors"
             >
