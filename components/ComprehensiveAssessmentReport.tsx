@@ -33,61 +33,62 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
     setIsExporting(true);
     try {
-      // 요소 복제 (화면 밖에서 처리하여 UI 깜빡임 방지)
-      const originalElement = reportRef.current;
-      const clonedElement = originalElement.cloneNode(true) as HTMLElement;
+      const element = reportRef.current;
 
-      // 복제본 스타일 설정: 화면 밖 + margin 제거
-      clonedElement.style.position = 'fixed';
-      clonedElement.style.left = '-9999px';
-      clonedElement.style.top = '0';
-      clonedElement.style.margin = '0';  // mx-auto 효과 제거
-      clonedElement.style.width = originalElement.offsetWidth + 'px';
+      // 콘텐츠의 실제 위치와 크기 계산
+      const rect = element.getBoundingClientRect();
+      const computed = window.getComputedStyle(element);
 
-      // DOM에 추가
-      document.body.appendChild(clonedElement);
+      // padding 값 파싱
+      const paddingLeft = parseFloat(computed.paddingLeft) || 0;
+      const paddingTop = parseFloat(computed.paddingTop) || 0;
+      const paddingRight = parseFloat(computed.paddingRight) || 0;
+      const paddingBottom = parseFloat(computed.paddingBottom) || 0;
 
-      // 약간의 지연 (렌더링 완료 대기)
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      // 복제본 캡처
-      const dataUrl = await toPng(clonedElement, {
+      // 방법 1: getBoundingClientRect + padding 계산 + transform
+      const dataUrl = await toPng(element, {
         quality: 0.95,
         pixelRatio: 2,
         backgroundColor: '#ffffff',
         cacheBust: true,
+        width: rect.width - paddingLeft - paddingRight,  // padding 제외한 콘텐츠 너비
+        height: rect.height - paddingTop - paddingBottom,
+        style: {
+          transform: `translate(-${paddingLeft}px, -${paddingTop}px)`,  // padding 오프셋
+          marginLeft: '0',
+          marginTop: '0',
+        },
       });
 
-      // 복제본 제거
-      document.body.removeChild(clonedElement);
-
-      // PDF 생성
+      // PDF 생성 (A4 비율 + 여백)
       const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgProps = pdf.getImageProperties(dataUrl);
 
-      // 이미지 속성 가져오기
-      const img = new Image();
-      img.src = dataUrl;
+      // A4에 맞게 스케일 조정 (좌우 각 10mm 여백)
+      const maxWidth = 190;  // 210mm - 20mm 여백
+      const maxHeight = 277; // 297mm - 20mm 여백
 
-      await new Promise((resolve) => {
-        img.onload = resolve;
-      });
+      let pdfWidth = maxWidth;
+      let pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (img.height * imgWidth) / img.width;
-      let heightLeft = imgHeight;
-      let position = 0;
+      // 높이가 너무 크면 여러 페이지로 분할
+      if (pdfHeight > maxHeight) {
+        // 첫 페이지
+        pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, pdfHeight);
 
-      // 첫 페이지 추가
-      pdf.addImage(dataUrl, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+        let heightLeft = pdfHeight - maxHeight;
+        let position = -maxHeight;
 
-      // 추가 페이지가 필요한 경우
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(dataUrl, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        // 추가 페이지
+        while (heightLeft > 0) {
+          pdf.addPage();
+          pdf.addImage(dataUrl, 'PNG', 10, position, pdfWidth, pdfHeight);
+          heightLeft -= maxHeight;
+          position -= maxHeight;
+        }
+      } else {
+        // 한 페이지에 수용 가능
+        pdf.addImage(dataUrl, 'PNG', 10, 10, pdfWidth, pdfHeight);
       }
 
       pdf.save(`${report.patientInfo.name}_타이밍검사_${report.patientInfo.testDate}.pdf`);
