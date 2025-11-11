@@ -247,7 +247,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 1: Processing Capability */}
-        <div className="mb-8">
+        <div className="mb-8" style={{ pageBreakInside: 'avoid' }}>
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">1</span>
             시청각 학습능력
@@ -333,7 +333,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 2: Learning Style */}
-        <div className="mb-8">
+        <div className="mb-8" style={{ pageBreakInside: 'avoid' }}>
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-purple-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">2</span>
             학습 스타일
@@ -370,7 +370,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 3: Attention */}
-        <div className="mb-8">
+        <div className="mb-8" style={{ pageBreakInside: 'avoid' }}>
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">3</span>
             시청각 주의력
@@ -448,7 +448,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 4: Brain Speed */}
-        <div className="mb-8">
+        <div className="mb-8" style={{ pageBreakInside: 'avoid' }}>
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">4</span>
             뇌 인지속도
@@ -490,7 +490,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 5: Sustainability */}
-        <div className="mb-8">
+        <div className="mb-8" style={{ pageBreakInside: 'avoid' }}>
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-teal-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">5</span>
             지속성
@@ -582,7 +582,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 6: Hemisphere Balance */}
-        <div className="mb-8">
+        <div className="mb-8" style={{ pageBreakBefore: 'always', pageBreakInside: 'avoid' }}>
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-indigo-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">6</span>
             좌우뇌 균형도
@@ -630,7 +630,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Individual Test Results */}
-        <div className="mb-8">
+        <div className="mb-8" style={{ pageBreakInside: 'avoid' }}>
           <h2 className="text-2xl font-bold text-gray-800 mb-4">개별 검사 결과</h2>
 
           <div className="overflow-x-auto">
