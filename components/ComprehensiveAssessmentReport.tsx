@@ -41,9 +41,24 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false,
-        // 가이드 접근법: computed style을 인라인으로 적용
+        // 가이드 접근법 + 스타일시트 정리
         onclone: (clonedDoc) => {
-          // 복제된 요소들도 배열로 수집
+          // STEP 1: 모든 스타일시트에서 oklch 제거
+          // 1a. 외부 스타일시트 제거 (oklch 포함, 수정 불가능)
+          clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach((link) => link.remove());
+
+          // 1b. 인라인 <style> 태그의 oklch를 rgb로 치환
+          const styleElements = clonedDoc.querySelectorAll('style');
+          styleElements.forEach((styleEl) => {
+            if (styleEl.textContent) {
+              styleEl.textContent = styleEl.textContent.replace(
+                /oklch\([^)]+\)/gi,
+                'rgb(128, 128, 128)'
+              );
+            }
+          });
+
+          // STEP 2: computed style을 인라인으로 적용 (레이아웃 보존)
           const clonedElements = Array.from(clonedDoc.querySelectorAll('*'));
 
           // 원본과 복제본은 같은 순서이므로 인덱스로 매칭
