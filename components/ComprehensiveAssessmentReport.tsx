@@ -33,14 +33,77 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
     setIsExporting(true);
     try {
-      // 원본 document의 모든 요소에 computed style 수집
+      // 원본 document의 모든 요소에서 중요한 CSS 속성들을 수집
       const originalElements = Array.from(reportRef.current.querySelectorAll('*')) as HTMLElement[];
-      const computedStyles = originalElements.map(el => window.getComputedStyle(el).cssText);
+
+      // 웹페이지와 동일한 모습을 위해 필요한 모든 CSS 속성
+      const cssProperties = [
+        // 레이아웃
+        'display', 'position', 'top', 'right', 'bottom', 'left', 'float', 'clear',
+        'zIndex', 'overflow', 'overflowX', 'overflowY',
+
+        // Flexbox
+        'flex', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis',
+        'justifyContent', 'alignItems', 'alignContent', 'alignSelf', 'order', 'gap',
+
+        // Grid
+        'grid', 'gridTemplateColumns', 'gridTemplateRows', 'gridTemplateAreas',
+        'gridColumn', 'gridRow', 'gridArea', 'gridGap', 'gridRowGap', 'gridColumnGap',
+
+        // 크기
+        'width', 'height', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight',
+        'boxSizing',
+
+        // 여백
+        'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
+        'padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+
+        // 타이포그래피
+        'color', 'fontSize', 'fontFamily', 'fontWeight', 'fontStyle', 'fontVariant',
+        'lineHeight', 'letterSpacing', 'textAlign', 'textDecoration', 'textTransform',
+        'textIndent', 'textShadow', 'whiteSpace', 'wordBreak', 'wordWrap',
+
+        // 배경
+        'background', 'backgroundColor', 'backgroundImage', 'backgroundSize',
+        'backgroundPosition', 'backgroundRepeat', 'backgroundClip',
+
+        // 테두리
+        'border', 'borderTop', 'borderRight', 'borderBottom', 'borderLeft',
+        'borderWidth', 'borderStyle', 'borderColor',
+        'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+        'borderTopStyle', 'borderRightStyle', 'borderBottomStyle', 'borderLeftStyle',
+        'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor',
+        'borderRadius', 'borderTopLeftRadius', 'borderTopRightRadius',
+        'borderBottomLeftRadius', 'borderBottomRightRadius',
+
+        // 효과
+        'opacity', 'visibility', 'boxShadow', 'transform', 'transformOrigin',
+        'transition', 'animation',
+
+        // 기타
+        'cursor', 'pointerEvents', 'userSelect',
+      ];
+
+      const elementStyles = originalElements.map(el => {
+        const computed = window.getComputedStyle(el);
+        const styles: { [key: string]: string } = {};
+
+        cssProperties.forEach(prop => {
+          const value = computed.getPropertyValue(prop);
+          if (value && value !== '' && value !== 'none' && value !== 'normal') {
+            styles[prop] = value;
+          }
+        });
+
+        return styles;
+      });
 
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
-        // oklch 색상 문제 해결: 스타일시트 제거 후 인라인 스타일 적용
+        useCORS: true,
+        allowTaint: false,
+        // oklch 색상 문제 해결: 스타일시트 제거 후 computed style 적용
         onclone: (clonedDoc, clonedElement) => {
           // 1. 모든 스타일시트 제거 (oklch 색상 함수 포함)
           const styleSheets = clonedDoc.querySelectorAll('style, link[rel="stylesheet"]');
@@ -49,8 +112,11 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
           // 2. 클론된 요소들에 원본의 computed style 적용
           const clonedElements = Array.from(clonedElement.querySelectorAll('*')) as HTMLElement[];
           clonedElements.forEach((element, index) => {
-            if (computedStyles[index]) {
-              element.style.cssText = computedStyles[index];
+            const styles = elementStyles[index];
+            if (styles) {
+              Object.entries(styles).forEach(([prop, value]) => {
+                element.style.setProperty(prop, value, 'important');
+              });
             }
           });
         },
