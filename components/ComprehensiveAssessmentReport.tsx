@@ -13,8 +13,6 @@ import {
   Cell,
 } from 'recharts';
 import { ComprehensiveAssessmentReport } from '@/types/evaluation';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { exportToExcel } from '@/utils/excelExport';
 import { exportToGoogleSheets, isGoogleSheetsConfigured } from '@/utils/googleSheetsExport';
 
@@ -27,127 +25,15 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // PDF Export
-  const handleExportPDF = async () => {
-    if (!reportRef.current) return;
-
-    setIsExporting(true);
-    try {
-      // 원본 document의 모든 요소에서 중요한 CSS 속성들을 수집
-      const originalElements = Array.from(reportRef.current.querySelectorAll('*')) as HTMLElement[];
-
-      // 웹페이지와 동일한 모습을 위해 필요한 모든 CSS 속성
-      const cssProperties = [
-        // 레이아웃
-        'display', 'position', 'top', 'right', 'bottom', 'left', 'float', 'clear',
-        'zIndex', 'overflow', 'overflowX', 'overflowY',
-
-        // Flexbox
-        'flex', 'flexDirection', 'flexWrap', 'flexGrow', 'flexShrink', 'flexBasis',
-        'justifyContent', 'alignItems', 'alignContent', 'alignSelf', 'order', 'gap',
-
-        // Grid
-        'grid', 'gridTemplateColumns', 'gridTemplateRows', 'gridTemplateAreas',
-        'gridColumn', 'gridRow', 'gridArea', 'gridGap', 'gridRowGap', 'gridColumnGap',
-
-        // 크기
-        'width', 'height', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight',
-        'boxSizing',
-
-        // 여백
-        'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
-        'padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
-
-        // 타이포그래피
-        'color', 'fontSize', 'fontFamily', 'fontWeight', 'fontStyle', 'fontVariant',
-        'lineHeight', 'letterSpacing', 'textAlign', 'textDecoration', 'textTransform',
-        'textIndent', 'textShadow', 'whiteSpace', 'wordBreak', 'wordWrap',
-
-        // 배경
-        'background', 'backgroundColor', 'backgroundImage', 'backgroundSize',
-        'backgroundPosition', 'backgroundRepeat', 'backgroundClip',
-
-        // 테두리
-        'border', 'borderTop', 'borderRight', 'borderBottom', 'borderLeft',
-        'borderWidth', 'borderStyle', 'borderColor',
-        'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
-        'borderTopStyle', 'borderRightStyle', 'borderBottomStyle', 'borderLeftStyle',
-        'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor',
-        'borderRadius', 'borderTopLeftRadius', 'borderTopRightRadius',
-        'borderBottomLeftRadius', 'borderBottomRightRadius',
-
-        // 효과
-        'opacity', 'visibility', 'boxShadow', 'transform', 'transformOrigin',
-        'transition', 'animation',
-
-        // 기타
-        'cursor', 'pointerEvents', 'userSelect',
-      ];
-
-      const elementStyles = originalElements.map(el => {
-        const computed = window.getComputedStyle(el);
-        const styles: { [key: string]: string } = {};
-
-        cssProperties.forEach(prop => {
-          const value = computed.getPropertyValue(prop);
-          if (value && value !== '' && value !== 'none' && value !== 'normal') {
-            styles[prop] = value;
-          }
-        });
-
-        return styles;
-      });
-
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        useCORS: true,
-        allowTaint: false,
-        // oklch 색상 문제 해결: 스타일시트 제거 후 computed style 적용
-        onclone: (clonedDoc, clonedElement) => {
-          // 1. 모든 스타일시트 제거 (oklch 색상 함수 포함)
-          const styleSheets = clonedDoc.querySelectorAll('style, link[rel="stylesheet"]');
-          styleSheets.forEach(sheet => sheet.remove());
-
-          // 2. 클론된 요소들에 원본의 computed style 적용
-          const clonedElements = Array.from(clonedElement.querySelectorAll('*')) as HTMLElement[];
-          clonedElements.forEach((element, index) => {
-            const styles = elementStyles[index];
-            if (styles) {
-              Object.entries(styles).forEach(([prop, value]) => {
-                element.style.setProperty(prop, value, 'important');
-              });
-            }
-          });
-        },
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`${report.patientInfo.name}_타이밍검사_${report.patientInfo.testDate}.pdf`);
-    } catch (error) {
-      console.error('PDF export failed:', error);
-      alert('PDF 생성에 실패했습니다.');
-    } finally {
-      setIsExporting(false);
-    }
+  // PDF Export using browser's native print functionality
+  const handleExportPDF = () => {
+    // 브라우저의 인쇄 다이얼로그를 열어 PDF로 저장
+    // 장점:
+    // 1. 완벽한 렌더링 (브라우저가 직접 처리)
+    // 2. oklch 색상 문제 없음
+    // 3. 레이아웃 100% 정확
+    // 4. 추가 라이브러리 불필요
+    window.print();
   };
 
   // Excel Export
@@ -649,8 +535,8 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-4 justify-center mt-8 pt-6 border-t-2 border-gray-200">
+        {/* Action Buttons - 인쇄 시 숨김 */}
+        <div className="flex flex-wrap gap-4 justify-center mt-8 pt-6 border-t-2 border-gray-200 print:hidden">
           {isSheetsConfigured && (
             <button
               onClick={handleExportGoogleSheets}
@@ -675,12 +561,11 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
           <button
             onClick={handleExportPDF}
-            disabled={isExporting}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
-            title="PDF 파일로 다운로드 (인쇄용)"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
+            title="브라우저 인쇄 다이얼로그 열기 (PDF로 저장 가능)"
           >
             <span>📄</span>
-            <span>{isExporting ? '생성 중...' : 'PDF로 저장'}</span>
+            <span>PDF로 저장</span>
           </button>
 
           <button
@@ -692,7 +577,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {!isSheetsConfigured && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm print:hidden">
             <p className="text-yellow-800">
               💡 <strong>Google Sheets 저장 기능을 사용하려면:</strong>
             </p>
