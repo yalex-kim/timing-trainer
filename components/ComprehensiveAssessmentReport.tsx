@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 import { ComprehensiveAssessmentReport } from '@/types/evaluation';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { exportToExcel } from '@/utils/excelExport';
 import { exportToGoogleSheets, isGoogleSheetsConfigured } from '@/utils/googleSheetsExport';
 
@@ -27,34 +27,93 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // PDF Export
-  const handleExportPDF = async () => {
-    if (!reportRef.current) return;
+  // 각 섹션에 대한 ref
+  const headerRef = useRef<HTMLDivElement>(null);
+  const section1Ref = useRef<HTMLDivElement>(null);
+  const section2Ref = useRef<HTMLDivElement>(null);
+  const section3Ref = useRef<HTMLDivElement>(null);
+  const section4Ref = useRef<HTMLDivElement>(null);
+  const section5Ref = useRef<HTMLDivElement>(null);
+  const section6Ref = useRef<HTMLDivElement>(null);
+  const section7Ref = useRef<HTMLDivElement>(null);
 
+  // PDF Export using html-to-image (섹션별 개별 캡처)
+  const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-      });
-
-      const imgData = canvas.toDataURL('image/png');
+      // PDF 설정
       const pdf = new jsPDF('p', 'mm', 'a4');
-
-      const imgWidth = 210;
+      const pageWidth = 210;
       const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
+      const margin = {
+        top: 10,
+        bottom: 10,
+        left: 10,
+        right: 10,
+      };
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      const contentWidth = pageWidth - margin.left - margin.right;
+      const contentHeight = pageHeight - margin.top - margin.bottom;
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      // 섹션별 ref 목록 (spacing: 섹션 아래에 추가할 여백 mm)
+      const sections = [
+        { ref: headerRef, name: 'header', forceNewPage: false, spacing: 8 },
+        { ref: section1Ref, name: 'section1', forceNewPage: false, spacing: 8 },
+        { ref: section2Ref, name: 'section2', forceNewPage: false, spacing: 8 },
+        { ref: section3Ref, name: 'section3', forceNewPage: false, spacing: 8 },
+        { ref: section4Ref, name: 'section4', forceNewPage: false, spacing: 8 },
+        { ref: section5Ref, name: 'section5', forceNewPage: false, spacing: 8 },
+        { ref: section6Ref, name: 'section6', forceNewPage: true, spacing: 8 },  // 페이지 2 시작
+        { ref: section7Ref, name: 'section7', forceNewPage: false, spacing: 0 },  // 마지막 섹션
+      ];
+
+      let currentPageY = 0; // 현재 페이지에서 사용한 높이 (mm)
+      let isFirstPage = true;
+
+      for (const section of sections) {
+        if (!section.ref.current) continue;
+
+        // 섹션 캡처
+        const dataUrl = await toPng(section.ref.current, {
+          quality: 0.95,
+          pixelRatio: 2,
+          backgroundColor: '#ffffff',
+          cacheBust: true,
+        });
+
+        // 이미지 로드
+        const img = new Image();
+        img.src = dataUrl;
+        await new Promise((resolve) => { img.onload = resolve; });
+
+        // 이미지 스케일 계산 (너비 기준으로 contentWidth에 맞춤)
+        const scale = contentWidth / img.width;
+        const sectionHeight = img.height * scale; // mm 단위
+
+        // 새 페이지가 필요한지 확인 (섹션 + 간격 포함)
+        const totalHeight = sectionHeight + section.spacing;
+        const needsNewPage = section.forceNewPage ||
+                             (!isFirstPage && currentPageY + sectionHeight > contentHeight);
+
+        if (needsNewPage) {
+          pdf.addPage();
+          currentPageY = 0;
+          isFirstPage = false;
+        }
+
+        // 섹션 이미지를 PDF에 추가
+        pdf.addImage(
+          dataUrl,
+          'PNG',
+          margin.left,
+          margin.top + currentPageY,
+          contentWidth,
+          sectionHeight
+        );
+
+        // 섹션 높이 + 간격 추가
+        currentPageY += sectionHeight + section.spacing;
+        isFirstPage = false;
       }
 
       pdf.save(`${report.patientInfo.name}_타이밍검사_${report.patientInfo.testDate}.pdf`);
@@ -112,9 +171,63 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      {/* Action Buttons - PDF 캡처에서 제외 */}
+      <div className="max-w-6xl mx-auto mb-4 flex flex-wrap gap-4 justify-center">
+        {isSheetsConfigured && (
+          <button
+            onClick={handleExportGoogleSheets}
+            disabled={isExporting}
+            className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
+            title="Google Sheets 데이터베이스에 저장 (시계열 분석용)"
+          >
+            <span>📈</span>
+            <span>{isExporting ? '저장 중...' : 'Google Sheets에 저장'}</span>
+          </button>
+        )}
+
+        <button
+          onClick={handleExportExcel}
+          disabled={isExporting}
+          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
+          title="Excel 파일로 다운로드 (리포트 형식)"
+        >
+          <span>📊</span>
+          <span>{isExporting ? '생성 중...' : 'Excel로 저장'}</span>
+        </button>
+
+        <button
+          onClick={handleExportPDF}
+          disabled={isExporting}
+          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
+          title="PDF 파일로 다운로드"
+        >
+          <span>📄</span>
+          <span>{isExporting ? '생성 중...' : 'PDF로 저장'}</span>
+        </button>
+
+        <button
+          onClick={onClose}
+          className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-bold transition-colors"
+        >
+          닫기
+        </button>
+      </div>
+
+      {!isSheetsConfigured && (
+        <div className="max-w-6xl mx-auto mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+          <p className="text-yellow-800">
+            💡 <strong>Google Sheets 저장 기능을 사용하려면:</strong>
+          </p>
+          <p className="text-yellow-700 mt-1">
+            <code className="bg-yellow-100 px-2 py-1 rounded">docs/GOOGLE_SHEETS_SETUP.md</code> 파일을 참고하여 설정하세요.
+          </p>
+        </div>
+      )}
+
+      {/* 보고서 내용 - PDF로 캡처될 영역 */}
       <div ref={reportRef} className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg p-6 md:p-8">
         {/* Header */}
-        <div className="border-b-2 border-gray-300 pb-6 mb-8">
+        <div ref={headerRef} className="border-b-2 border-gray-300 pb-6 mb-8">
           <h1 className="text-3xl font-bold text-center text-gray-800 mb-4">
             종합 타이밍 검사 결과
           </h1>
@@ -141,7 +254,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 1: Processing Capability */}
-        <div className="mb-8">
+        <div ref={section1Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">1</span>
             시청각 학습능력
@@ -227,7 +340,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 2: Learning Style */}
-        <div className="mb-8">
+        <div ref={section2Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-purple-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">2</span>
             학습 스타일
@@ -264,7 +377,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 3: Attention */}
-        <div className="mb-8">
+        <div ref={section3Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">3</span>
             시청각 주의력
@@ -342,7 +455,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 4: Brain Speed */}
-        <div className="mb-8">
+        <div ref={section4Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">4</span>
             뇌 인지속도
@@ -384,7 +497,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 5: Sustainability */}
-        <div className="mb-8">
+        <div ref={section5Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-teal-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">5</span>
             지속성
@@ -476,7 +589,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Section 6: Hemisphere Balance */}
-        <div className="mb-8">
+        <div ref={section6Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             <span className="bg-indigo-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-3">6</span>
             좌우뇌 균형도
@@ -524,7 +637,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         </div>
 
         {/* Individual Test Results */}
-        <div className="mb-8">
+        <div ref={section7Ref} className="mb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">개별 검사 결과</h2>
 
           <div className="overflow-x-auto">
@@ -564,59 +677,6 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
             </table>
           </div>
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-4 justify-center mt-8 pt-6 border-t-2 border-gray-200">
-          {isSheetsConfigured && (
-            <button
-              onClick={handleExportGoogleSheets}
-              disabled={isExporting}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
-              title="Google Sheets 데이터베이스에 저장 (시계열 분석용)"
-            >
-              <span>📈</span>
-              <span>{isExporting ? '저장 중...' : 'Google Sheets에 저장'}</span>
-            </button>
-          )}
-
-          <button
-            onClick={handleExportExcel}
-            disabled={isExporting}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
-            title="Excel 파일로 다운로드 (리포트 형식)"
-          >
-            <span>📊</span>
-            <span>{isExporting ? '생성 중...' : 'Excel로 저장'}</span>
-          </button>
-
-          <button
-            onClick={handleExportPDF}
-            disabled={isExporting}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-bold transition-colors flex items-center gap-2"
-            title="PDF 파일로 다운로드 (인쇄용)"
-          >
-            <span>📄</span>
-            <span>{isExporting ? '생성 중...' : 'PDF로 저장'}</span>
-          </button>
-
-          <button
-            onClick={onClose}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-bold transition-colors"
-          >
-            닫기
-          </button>
-        </div>
-
-        {!isSheetsConfigured && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
-            <p className="text-yellow-800">
-              💡 <strong>Google Sheets 저장 기능을 사용하려면:</strong>
-            </p>
-            <p className="text-yellow-700 mt-1">
-              <code className="bg-yellow-100 px-2 py-1 rounded">docs/GOOGLE_SHEETS_SETUP.md</code> 파일을 참고하여 설정하세요.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
