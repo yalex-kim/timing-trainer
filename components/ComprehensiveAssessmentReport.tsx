@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 import { ComprehensiveAssessmentReport } from '@/types/evaluation';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { exportToExcel } from '@/utils/excelExport';
 import { exportToGoogleSheets, isGoogleSheetsConfigured } from '@/utils/googleSheetsExport';
 
@@ -27,115 +27,45 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
   const reportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // PDF Export
+  // PDF Export using html-to-image (브라우저 렌더링 결과를 직접 캡처)
   const handleExportPDF = async () => {
     if (!reportRef.current) return;
 
     setIsExporting(true);
     try {
-      // 원본 DOM의 모든 요소를 먼저 수집 (onclone에서 매칭하기 위해)
-      const originalElements = Array.from(reportRef.current.querySelectorAll('*'));
-
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
+      // html-to-image: 브라우저가 렌더링한 결과를 그대로 캡처 (oklch 파싱 문제 없음)
+      const dataUrl = await toPng(reportRef.current, {
+        quality: 0.95,
+        pixelRatio: 2,
         backgroundColor: '#ffffff',
-        useCORS: true,
-        logging: false,
-        // 가이드 접근법 + 스타일시트 정리
-        onclone: (clonedDoc) => {
-          // STEP 1: 모든 스타일시트에서 oklch 제거
-          // 1a. 외부 스타일시트 제거 (oklch 포함, 수정 불가능)
-          clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach((link) => link.remove());
-
-          // 1b. 인라인 <style> 태그의 oklch를 rgb로 치환
-          const styleElements = clonedDoc.querySelectorAll('style');
-          styleElements.forEach((styleEl) => {
-            if (styleEl.textContent) {
-              styleEl.textContent = styleEl.textContent.replace(
-                /oklch\([^)]+\)/gi,
-                'rgb(128, 128, 128)'
-              );
-            }
-          });
-
-          // STEP 2: computed style을 인라인으로 적용 (레이아웃 보존)
-          const clonedElements = Array.from(clonedDoc.querySelectorAll('*'));
-
-          // 원본과 복제본은 같은 순서이므로 인덱스로 매칭
-          clonedElements.forEach((clonedEl, index) => {
-            if (clonedEl instanceof HTMLElement && originalElements[index]) {
-              // 원본 요소의 computed style 가져오기 (oklch가 자동으로 RGB로 변환됨)
-              const computed = window.getComputedStyle(originalElements[index] as Element);
-
-              // 주요 스타일 속성들을 인라인으로 적용
-              // 색상
-              clonedEl.style.color = computed.color;
-              clonedEl.style.backgroundColor = computed.backgroundColor;
-
-              // Border
-              clonedEl.style.borderColor = computed.borderColor;
-              clonedEl.style.borderWidth = computed.borderWidth;
-              clonedEl.style.borderStyle = computed.borderStyle;
-              clonedEl.style.borderRadius = computed.borderRadius;
-
-              // Typography
-              clonedEl.style.fontSize = computed.fontSize;
-              clonedEl.style.fontWeight = computed.fontWeight;
-              clonedEl.style.fontFamily = computed.fontFamily;
-              clonedEl.style.lineHeight = computed.lineHeight;
-              clonedEl.style.textAlign = computed.textAlign;
-
-              // Layout
-              clonedEl.style.display = computed.display;
-              clonedEl.style.position = computed.position;
-              clonedEl.style.width = computed.width;
-              clonedEl.style.height = computed.height;
-
-              // Spacing
-              clonedEl.style.padding = computed.padding;
-              clonedEl.style.margin = computed.margin;
-
-              // Other
-              clonedEl.style.boxShadow = computed.boxShadow;
-              clonedEl.style.opacity = computed.opacity;
-
-              // Flexbox (부모가 flex인 경우)
-              if (computed.display === 'flex') {
-                clonedEl.style.flexDirection = computed.flexDirection;
-                clonedEl.style.justifyContent = computed.justifyContent;
-                clonedEl.style.alignItems = computed.alignItems;
-                clonedEl.style.gap = computed.gap;
-              }
-
-              // SVG 요소
-              if (clonedEl.tagName.toLowerCase() === 'svg' ||
-                  clonedEl.tagName.toLowerCase() === 'path' ||
-                  clonedEl.tagName.toLowerCase() === 'circle' ||
-                  clonedEl.tagName.toLowerCase() === 'rect') {
-                clonedEl.style.fill = computed.fill;
-                clonedEl.style.stroke = computed.stroke;
-              }
-            }
-          });
-        },
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      // PDF 생성
       const pdf = new jsPDF('p', 'mm', 'a4');
 
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      // 이미지 속성 가져오기
+      const img = new Image();
+      img.src = dataUrl;
+
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
+
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (img.height * imgWidth) / img.width;
       let heightLeft = imgHeight;
       let position = 0;
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      // 첫 페이지 추가
+      pdf.addImage(dataUrl, 'PNG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
 
-      while (heightLeft >= 0) {
+      // 추가 페이지가 필요한 경우
+      while (heightLeft > 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        pdf.addImage(dataUrl, 'PNG', 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
       }
 
