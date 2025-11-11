@@ -40,13 +40,16 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
-        // oklch 색상 문제 해결: 스타일시트에서 oklch 제거 + computed 색상 값 적용
+        // oklch 색상 문제 해결: 모든 스타일시트와 CSS 규칙에서 oklch 완전 제거
         onclone: (clonedDoc) => {
-          // 1. 클론된 문서의 모든 스타일시트에서 oklch 제거
+          // 1. 모든 link 태그 제거 (외부 스타일시트가 oklch 포함)
+          const links = clonedDoc.querySelectorAll('link[rel="stylesheet"]');
+          links.forEach((link) => link.remove());
+
+          // 2. 모든 style 태그에서 oklch 제거
           const styleSheets = clonedDoc.querySelectorAll('style');
           styleSheets.forEach((styleElement) => {
             if (styleElement.textContent) {
-              // oklch(...) 함수를 rgb(128, 128, 128)로 대체 (임시 회색)
               styleElement.textContent = styleElement.textContent.replace(
                 /oklch\([^)]+\)/g,
                 'rgb(128, 128, 128)'
@@ -54,10 +57,38 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
             }
           });
 
-          // 2. 각 요소의 색상 속성을 computed RGB 값으로 오버라이드
+          // 3. 접근 가능한 모든 CSSOM 규칙에서 oklch 제거
+          try {
+            const sheets = clonedDoc.styleSheets;
+            for (let i = 0; i < sheets.length; i++) {
+              try {
+                const rules = sheets[i].cssRules || sheets[i].rules;
+                if (rules) {
+                  for (let j = 0; j < rules.length; j++) {
+                    const rule = rules[j] as CSSStyleRule;
+                    if (rule.style) {
+                      for (let k = 0; k < rule.style.length; k++) {
+                        const prop = rule.style[k];
+                        const value = rule.style.getPropertyValue(prop);
+                        if (value && value.includes('oklch')) {
+                          rule.style.setProperty(prop, 'rgb(128, 128, 128)', 'important');
+                        }
+                      }
+                    }
+                  }
+                }
+              } catch (e) {
+                // CORS로 접근 불가능한 스타일시트는 무시
+                console.warn('Cannot access stylesheet:', e);
+              }
+            }
+          } catch (e) {
+            console.warn('Cannot access CSSOM:', e);
+          }
+
+          // 4. 각 요소의 색상 속성을 computed RGB 값으로 강제 오버라이드
           const clonedElements = Array.from(clonedDoc.querySelectorAll('*'));
 
-          // 원본과 클론된 요소는 같은 순서이므로 인덱스로 매칭
           clonedElements.forEach((element, index) => {
             if (element instanceof HTMLElement && originalElements[index]) {
               const computedStyle = window.getComputedStyle(originalElements[index] as Element);
@@ -83,10 +114,20 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
                 }
               });
 
-              // boxShadow도 oklch를 포함할 수 있으므로 처리
+              // boxShadow와 fill도 처리
               const boxShadow = computedStyle.getPropertyValue('box-shadow');
               if (boxShadow && boxShadow !== 'none') {
                 element.style.setProperty('box-shadow', boxShadow, 'important');
+              }
+
+              const fill = computedStyle.getPropertyValue('fill');
+              if (fill && fill !== 'none') {
+                element.style.setProperty('fill', fill, 'important');
+              }
+
+              const stroke = computedStyle.getPropertyValue('stroke');
+              if (stroke && stroke !== 'none') {
+                element.style.setProperty('stroke', stroke, 'important');
               }
             }
           });
