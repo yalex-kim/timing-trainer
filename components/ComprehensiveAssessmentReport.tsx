@@ -40,8 +40,21 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
-        // oklch 색상 문제 해결: 색상 속성만 computed 값으로 오버라이드
+        // oklch 색상 문제 해결: 스타일시트에서 oklch 제거 + computed 색상 값 적용
         onclone: (clonedDoc) => {
+          // 1. 클론된 문서의 모든 스타일시트에서 oklch 제거
+          const styleSheets = clonedDoc.querySelectorAll('style');
+          styleSheets.forEach((styleElement) => {
+            if (styleElement.textContent) {
+              // oklch(...) 함수를 rgb(128, 128, 128)로 대체 (임시 회색)
+              styleElement.textContent = styleElement.textContent.replace(
+                /oklch\([^)]+\)/g,
+                'rgb(128, 128, 128)'
+              );
+            }
+          });
+
+          // 2. 각 요소의 색상 속성을 computed RGB 값으로 오버라이드
           const clonedElements = Array.from(clonedDoc.querySelectorAll('*'));
 
           // 원본과 클론된 요소는 같은 순서이므로 인덱스로 매칭
@@ -49,7 +62,7 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
             if (element instanceof HTMLElement && originalElements[index]) {
               const computedStyle = window.getComputedStyle(originalElements[index] as Element);
 
-              // 색상 관련 속성만 computed 값(RGB)으로 오버라이드
+              // 모든 색상 관련 속성 computed 값(RGB)으로 오버라이드
               const colorProps = [
                 'color',
                 'backgroundColor',
@@ -58,6 +71,9 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
                 'borderRightColor',
                 'borderBottomColor',
                 'borderLeftColor',
+                'outlineColor',
+                'textDecorationColor',
+                'caretColor',
               ];
 
               colorProps.forEach((prop) => {
@@ -66,6 +82,12 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
                   element.style.setProperty(prop, value, 'important');
                 }
               });
+
+              // boxShadow도 oklch를 포함할 수 있으므로 처리
+              const boxShadow = computedStyle.getPropertyValue('box-shadow');
+              if (boxShadow && boxShadow !== 'none') {
+                element.style.setProperty('box-shadow', boxShadow, 'important');
+              }
             }
           });
         },
