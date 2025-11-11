@@ -33,14 +33,17 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
     setIsExporting(true);
     try {
+      // 실제 렌더링된 요소의 크기 가져오기 (여백 제외)
+      const rect = reportRef.current.getBoundingClientRect();
+
       // html-to-image: 브라우저가 렌더링한 결과를 그대로 캡처 (oklch 파싱 문제 없음)
       const dataUrl = await toPng(reportRef.current, {
         quality: 0.95,
         pixelRatio: 2,
         backgroundColor: '#ffffff',
-        cacheBust: true, // 캐시 문제 방지
-        width: reportRef.current.scrollWidth, // 전체 너비 캡처
-        height: reportRef.current.scrollHeight, // 전체 높이 캡처
+        cacheBust: true,
+        width: rect.width,   // 실제 요소 너비만 (여백 제외)
+        height: rect.height, // 실제 요소 높이만
       });
 
       // PDF 생성
