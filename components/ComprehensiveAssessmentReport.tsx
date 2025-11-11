@@ -33,32 +33,50 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
     setIsExporting(true);
     try {
-      const element = reportRef.current;
+      const originalElement = reportRef.current;
 
-      // 콘텐츠의 실제 위치와 크기 계산
-      const rect = element.getBoundingClientRect();
-      const computed = window.getComputedStyle(element);
+      // 방법 2 개선: 임시 래퍼 생성 + 클래스 제거
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: -9999;
+        background: white;
+        width: fit-content;
+        max-width: 100vw;
+      `;
 
-      // padding 값 파싱
-      const paddingLeft = parseFloat(computed.paddingLeft) || 0;
-      const paddingTop = parseFloat(computed.paddingTop) || 0;
-      const paddingRight = parseFloat(computed.paddingRight) || 0;
-      const paddingBottom = parseFloat(computed.paddingBottom) || 0;
+      // 요소 복제
+      const clone = originalElement.cloneNode(true) as HTMLElement;
 
-      // 방법 1: getBoundingClientRect + padding 계산 + transform
-      const dataUrl = await toPng(element, {
+      // 문제의 클래스들을 명시적으로 제거
+      clone.classList.remove('mx-auto');   // 중앙정렬 margin 제거
+      clone.classList.remove('max-w-6xl'); // max-width 제약 제거
+
+      // 명시적 너비 설정 (원본 요소의 실제 너비)
+      const originalWidth = originalElement.offsetWidth;
+      clone.style.width = `${originalWidth}px`;
+      clone.style.margin = '0';
+      clone.style.maxWidth = 'none';
+
+      // 래퍼에 추가
+      wrapper.appendChild(clone);
+      document.body.appendChild(wrapper);
+
+      // 렌더링 대기
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 캡처
+      const dataUrl = await toPng(clone, {
         quality: 0.95,
         pixelRatio: 2,
         backgroundColor: '#ffffff',
         cacheBust: true,
-        width: rect.width - paddingLeft - paddingRight,  // padding 제외한 콘텐츠 너비
-        height: rect.height - paddingTop - paddingBottom,
-        style: {
-          transform: `translate(-${paddingLeft}px, -${paddingTop}px)`,  // padding 오프셋
-          marginLeft: '0',
-          marginTop: '0',
-        },
       });
+
+      // 정리
+      document.body.removeChild(wrapper);
 
       // PDF 생성 (A4 비율 + 여백)
       const pdf = new jsPDF('p', 'mm', 'a4');
