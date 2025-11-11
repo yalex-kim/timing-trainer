@@ -33,68 +33,32 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
 
     setIsExporting(true);
     try {
-      // 원본 문서의 모든 요소를 먼저 배열로 수집 (querySelector 문제 방지)
+      // 원본 문서의 모든 요소를 먼저 배열로 수집
       const originalElements = Array.from(reportRef.current.querySelectorAll('*'));
 
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
-        // oklch 색상 문제 해결: 모든 스타일시트와 CSS 규칙에서 oklch 완전 제거
+        // 완전한 해결책: 모든 CSS 제거하고 computed 스타일만 인라인으로 적용
         onclone: (clonedDoc) => {
-          // 1. 모든 link 태그 제거 (외부 스타일시트가 oklch 포함)
-          const links = clonedDoc.querySelectorAll('link[rel="stylesheet"]');
-          links.forEach((link) => link.remove());
+          // 1. 모든 CSS 소스 완전 제거 (oklch의 모든 가능한 소스 차단)
+          clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach((link) => link.remove());
+          clonedDoc.querySelectorAll('style').forEach((style) => style.remove());
 
-          // 2. 모든 style 태그에서 oklch 제거
-          const styleSheets = clonedDoc.querySelectorAll('style');
-          styleSheets.forEach((styleElement) => {
-            if (styleElement.textContent) {
-              styleElement.textContent = styleElement.textContent.replace(
-                /oklch\([^)]+\)/g,
-                'rgb(128, 128, 128)'
-              );
-            }
-          });
-
-          // 3. 접근 가능한 모든 CSSOM 규칙에서 oklch 제거
-          try {
-            const sheets = clonedDoc.styleSheets;
-            for (let i = 0; i < sheets.length; i++) {
-              try {
-                const rules = sheets[i].cssRules || sheets[i].rules;
-                if (rules) {
-                  for (let j = 0; j < rules.length; j++) {
-                    const rule = rules[j] as CSSStyleRule;
-                    if (rule.style) {
-                      for (let k = 0; k < rule.style.length; k++) {
-                        const prop = rule.style[k];
-                        const value = rule.style.getPropertyValue(prop);
-                        if (value && value.includes('oklch')) {
-                          rule.style.setProperty(prop, 'rgb(128, 128, 128)', 'important');
-                        }
-                      }
-                    }
-                  }
-                }
-              } catch (e) {
-                // CORS로 접근 불가능한 스타일시트는 무시
-                console.warn('Cannot access stylesheet:', e);
-              }
-            }
-          } catch (e) {
-            console.warn('Cannot access CSSOM:', e);
-          }
-
-          // 4. 각 요소의 색상 속성을 computed RGB 값으로 강제 오버라이드
+          // 2. 각 요소의 스타일을 computed 값으로 완전히 대체
           const clonedElements = Array.from(clonedDoc.querySelectorAll('*'));
 
           clonedElements.forEach((element, index) => {
             if (element instanceof HTMLElement && originalElements[index]) {
               const computedStyle = window.getComputedStyle(originalElements[index] as Element);
 
-              // 모든 색상 관련 속성 computed 값(RGB)으로 오버라이드
-              const colorProps = [
+              // 기존 style 속성 완전히 제거 (oklch가 있을 수 있음)
+              element.removeAttribute('style');
+
+              // 필수 스타일 속성들을 computed 값으로 설정
+              const importantProps = [
+                // 색상
                 'color',
                 'backgroundColor',
                 'borderColor',
@@ -102,32 +66,98 @@ export default function ComprehensiveAssessmentReportComponent({ report, onClose
                 'borderRightColor',
                 'borderBottomColor',
                 'borderLeftColor',
-                'outlineColor',
-                'textDecorationColor',
-                'caretColor',
+                // 레이아웃
+                'display',
+                'position',
+                'top',
+                'right',
+                'bottom',
+                'left',
+                'width',
+                'height',
+                'minWidth',
+                'minHeight',
+                'maxWidth',
+                'maxHeight',
+                'margin',
+                'marginTop',
+                'marginRight',
+                'marginBottom',
+                'marginLeft',
+                'padding',
+                'paddingTop',
+                'paddingRight',
+                'paddingBottom',
+                'paddingLeft',
+                // Border
+                'borderWidth',
+                'borderStyle',
+                'borderRadius',
+                'borderTopWidth',
+                'borderRightWidth',
+                'borderBottomWidth',
+                'borderLeftWidth',
+                // Flexbox
+                'flexDirection',
+                'flexWrap',
+                'justifyContent',
+                'alignItems',
+                'alignContent',
+                'flex',
+                'flexGrow',
+                'flexShrink',
+                'flexBasis',
+                'gap',
+                // Grid
+                'gridTemplateColumns',
+                'gridTemplateRows',
+                'gridColumn',
+                'gridRow',
+                // Typography
+                'fontSize',
+                'fontWeight',
+                'fontFamily',
+                'lineHeight',
+                'textAlign',
+                'textDecoration',
+                'textTransform',
+                'letterSpacing',
+                'whiteSpace',
+                // Other
+                'opacity',
+                'visibility',
+                'overflow',
+                'boxShadow',
+                'transform',
+                'zIndex',
               ];
 
-              colorProps.forEach((prop) => {
+              importantProps.forEach((prop) => {
                 const value = computedStyle.getPropertyValue(prop);
-                if (value && value !== 'rgba(0, 0, 0, 0)' && value !== 'transparent') {
+                // var() 참조와 oklch는 제외하고 실제 계산된 값만 사용
+                if (value &&
+                    value !== 'none' &&
+                    value !== 'auto' &&
+                    value !== 'normal' &&
+                    value !== 'transparent' &&
+                    value !== 'rgba(0, 0, 0, 0)' &&
+                    !value.includes('var(') &&
+                    !value.includes('oklch')) {
                   element.style.setProperty(prop, value, 'important');
                 }
               });
 
-              // boxShadow와 fill도 처리
-              const boxShadow = computedStyle.getPropertyValue('box-shadow');
-              if (boxShadow && boxShadow !== 'none') {
-                element.style.setProperty('box-shadow', boxShadow, 'important');
-              }
+              // SVG 요소는 fill과 stroke 추가 처리
+              if (element.tagName === 'svg' || element.tagName === 'path' || element.tagName === 'circle' || element.tagName === 'rect') {
+                const fill = computedStyle.getPropertyValue('fill');
+                if (fill && fill !== 'none' && !fill.includes('oklch')) {
+                  element.style.setProperty('fill', fill, 'important');
+                }
 
-              const fill = computedStyle.getPropertyValue('fill');
-              if (fill && fill !== 'none') {
-                element.style.setProperty('fill', fill, 'important');
-              }
-
-              const stroke = computedStyle.getPropertyValue('stroke');
-              if (stroke && stroke !== 'none') {
-                element.style.setProperty('stroke', stroke, 'important');
+                const stroke = computedStyle.getPropertyValue('stroke');
+                if (stroke && stroke !== 'none' && !stroke.includes('oklch')) {
+                  element.style.setProperty('stroke', stroke, 'important');
+                }
               }
             }
           });
