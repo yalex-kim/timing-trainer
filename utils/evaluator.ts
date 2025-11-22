@@ -344,9 +344,9 @@ export class TimingEvaluator {
 
     // 평균 점수
     const averagePoints =
-      totalResponses > 0
+      validBeats.length > 0
         ? validBeats.reduce((sum, b) => sum + (b.feedback?.points || 0), 0) /
-          totalResponses
+          validBeats.length
         : 0;
 
     // 일관성

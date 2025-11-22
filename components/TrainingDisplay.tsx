@@ -66,9 +66,8 @@ export function TrainingDisplay({
     return false;
   };
 
-  // 시각 모드에서 현재 눌러야 하는 영역인지 확인
+  // 현재 눌러야 하는 영역인지 확인 (시각/청각 모두 깜빡임 표시)
   const isBodyPartActive = (part: BodyPartType): boolean => {
-    if (trainingType !== 'visual') return false;
     if (!isActive) return false;
 
     // 커스텀 시퀀스 모드: currentBeatData의 expectedTypes를 확인
