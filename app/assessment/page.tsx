@@ -252,15 +252,14 @@ function AssessmentContent() {
         playBeep();
       }
 
-      if (currentTest.trainingType === 'visual') {
-        setIsActive(true);
-        if (currentTest.trainingRange === 'both') {
-          setCurrentSide((prev) => (prev === 'left' ? 'right' : 'left'));
-        }
-        setTimeout(() => {
-          setIsActive(false);
-        }, intervalMs * 0.3);
+      // 시각/청각 모두 화면 깜빡임 효과
+      setIsActive(true);
+      if (currentTest.trainingRange === 'both') {
+        setCurrentSide((prev) => (prev === 'left' ? 'right' : 'left'));
       }
+      setTimeout(() => {
+        setIsActive(false);
+      }, intervalMs * 0.3);
 
       setCurrentBeat((prev) => {
         const currentSession = sessionRef.current;
