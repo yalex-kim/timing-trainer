@@ -67,6 +67,7 @@ function TrainingContent() {
 
   // 입력 장치 설정 가져오기
   const [inputDevice, setInputDevice] = useState<'keyboard' | 'serial'>('keyboard');
+  const [serialPort, setSerialPort] = useState<SerialPort | null>(null);
 
   useEffect(() => {
     const savedDevice = localStorage.getItem('inputDevice') as 'keyboard' | 'serial' | null;
@@ -75,15 +76,36 @@ function TrainingContent() {
     }
   }, []);
 
+  // Serial 포트 가져오기 (이미 연결된 포트 재사용)
+  useEffect(() => {
+    if (inputDevice === 'serial' && typeof navigator !== 'undefined' && 'serial' in navigator) {
+      const getPorts = async () => {
+        try {
+          const ports = await navigator.serial.getPorts();
+          if (ports.length > 0) {
+            // 첫 번째 허가된 포트 사용
+            const port = ports[0];
+
+            // 포트가 아직 열리지 않았으면 열기
+            if (!port.readable) {
+              await port.open({ baudRate: 9600 });
+              console.log('Serial port opened for training');
+            }
+
+            setSerialPort(port);
+          }
+        } catch (error) {
+          console.error('Failed to get serial ports:', error);
+        }
+      };
+      getPorts();
+    }
+  }, [inputDevice]);
+
   // Custom hooks
   const { userProfile } = useUserProfile();
   const { playBeep } = useAudioBeep();
   const { handleExit, handleRestart } = createNavigationHandlers(router);
-
-  // Serial 장치 연결 (Serial 모드일 때만)
-  const { connectedPort } = useSerialDevice({
-    autoConnect: inputDevice === 'serial',
-  });
 
   const intervalMs = 60000 / bpm;
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
@@ -249,7 +271,7 @@ function TrainingContent() {
     onInput: handleInput,
     enableKeyboard: phase === 'training' && inputDevice === 'keyboard',
     enableSerial: phase === 'training' && inputDevice === 'serial',
-    serialPort: connectedPort,
+    serialPort: serialPort,
   });
 
   // 터치 입력 핸들러

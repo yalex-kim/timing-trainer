@@ -270,6 +270,9 @@ export function useInputHandler({
   useEffect(() => {
     if (!enableSerial || !serialPort) return;
 
+    let reader: ReadableStreamDefaultReader<string> | null = null;
+    let aborted = false;
+
     const setupSerial = async () => {
       try {
         // 포트가 이미 열려있지 않으면 무시
@@ -280,16 +283,25 @@ export function useInputHandler({
 
         isSerialReadingRef.current = true;
 
+        // Transform stream을 사용하여 데이터를 문자로 변환
         const textDecoder = new TextDecoderStream();
-        const readableStreamClosed = serialPort.readable.pipeTo(textDecoder.writable);
-        const reader = textDecoder.readable.getReader();
+        const readableStreamClosed = serialPort.readable.pipeTo(textDecoder.writable).catch((error) => {
+          if (!aborted) {
+            console.error('Pipe error:', error);
+          }
+        });
+
+        reader = textDecoder.readable.getReader();
         serialReaderRef.current = reader;
 
+        console.log('Serial input handler started');
+
         // 데이터 읽기 루프
-        while (isSerialReadingRef.current) {
+        while (isSerialReadingRef.current && !aborted) {
           try {
             const { value, done } = await reader.read();
-            if (done || !isSerialReadingRef.current) {
+
+            if (done || !isSerialReadingRef.current || aborted) {
               break;
             }
 
@@ -297,38 +309,44 @@ export function useInputHandler({
               // 받은 데이터를 한 문자씩 처리
               for (const char of value) {
                 const inputType = InputDeviceMapper.fromSerial(char);
-                if (!inputType) continue;
+                if (inputType) {
+                  console.log('Serial input received:', char, '→', inputType);
 
-                const inputEvent: InputEvent = {
-                  type: inputType,
-                  timestamp: performance.now() - startTimeRef.current,
-                  source: 'serial',
-                  rawData: { char },
-                };
+                  const inputEvent: InputEvent = {
+                    type: inputType,
+                    timestamp: performance.now() - startTimeRef.current,
+                    source: 'serial',
+                    rawData: { char },
+                  };
 
-                onInput(inputEvent);
+                  onInput(inputEvent);
+                }
               }
             }
           } catch (error) {
-            if (isSerialReadingRef.current) {
+            if (!aborted && isSerialReadingRef.current) {
               console.error('Error reading from serial port:', error);
             }
             break;
           }
         }
 
-        reader.releaseLock();
+        console.log('Serial input handler stopped');
       } catch (error) {
-        console.error('Failed to setup serial:', error);
+        if (!aborted) {
+          console.error('Failed to setup serial:', error);
+        }
       }
     };
 
     setupSerial();
 
     return () => {
+      aborted = true;
       isSerialReadingRef.current = false;
-      if (serialReaderRef.current) {
-        serialReaderRef.current.cancel().catch(console.error);
+
+      if (reader) {
+        reader.cancel().catch(() => {});
         serialReaderRef.current = null;
       }
     };
