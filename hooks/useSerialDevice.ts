@@ -24,6 +24,7 @@ export function useSerialDevice({ onData, autoConnect = false }: UseSerialDevice
 
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const isReadingRef = useRef(false);
+  const manuallyDisconnectedRef = useRef(false); // 수동 연결 해제 추적
 
   // Web Serial API 지원 확인
   const isSerialSupported = typeof navigator !== 'undefined' && 'serial' in navigator;
@@ -40,17 +41,19 @@ export function useSerialDevice({ onData, autoConnect = false }: UseSerialDevice
       const portInfos: SerialDeviceInfo[] = await Promise.all(
         ports.map(async (port) => {
           const info = port.getInfo();
+          const vid = info.usbVendorId?.toString(16).toUpperCase().padStart(4, '0') || 'N/A';
+          const pid = info.usbProductId?.toString(16).toUpperCase().padStart(4, '0') || 'N/A';
           return {
             port,
-            name: `USB Serial (VID: ${info.usbVendorId?.toString(16)}, PID: ${info.usbProductId?.toString(16)})`,
+            name: `USB Serial Device [VID:${vid}, PID:${pid}]`,
             isConnected: port.readable !== null,
           };
         })
       );
       setAvailablePorts(portInfos);
 
-      // 자동 연결 모드이고 연결되지 않은 포트가 있으면 첫 번째 포트에 자동 연결
-      if (autoConnect && portInfos.length > 0 && !connectedPort) {
+      // 자동 연결 모드이고, 수동으로 연결 해제하지 않았고, 연결되지 않은 포트가 있으면 첫 번째 포트에 자동 연결
+      if (autoConnect && !manuallyDisconnectedRef.current && portInfos.length > 0 && !connectedPort) {
         await connectToPort(portInfos[0].port);
       }
     } catch (err) {
@@ -70,6 +73,7 @@ export function useSerialDevice({ onData, autoConnect = false }: UseSerialDevice
       await port.open({ baudRate: 9600 });
       setConnectedPort(port);
       setError(null);
+      manuallyDisconnectedRef.current = false; // 연결 시 플래그 리셋
       console.log('Serial port connected');
 
       // 읽기 시작
@@ -116,6 +120,9 @@ export function useSerialDevice({ onData, autoConnect = false }: UseSerialDevice
     if (!connectedPort) return;
 
     try {
+      // 수동 연결 해제 플래그 설정 (자동 재연결 방지)
+      manuallyDisconnectedRef.current = true;
+
       // 읽기 중지
       isReadingRef.current = false;
       setIsReading(false);
@@ -131,6 +138,7 @@ export function useSerialDevice({ onData, autoConnect = false }: UseSerialDevice
       }
 
       setConnectedPort(null);
+      setError(null);
       console.log('Serial port disconnected');
     } catch (err) {
       console.error('Failed to disconnect serial port:', err);
