@@ -25,6 +25,12 @@ export function useSerialDevice({ onData, autoConnect = false }: UseSerialDevice
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const isReadingRef = useRef(false);
   const manuallyDisconnectedRef = useRef(false); // 수동 연결 해제 추적
+  const onDataRef = useRef(onData); // onData를 ref로 관리하여 항상 최신 콜백 사용
+
+  // onData가 변경되면 ref 업데이트
+  useEffect(() => {
+    onDataRef.current = onData;
+  }, [onData]);
 
   // Web Serial API 지원 확인
   const isSerialSupported = typeof navigator !== 'undefined' && 'serial' in navigator;
@@ -77,7 +83,7 @@ export function useSerialDevice({ onData, autoConnect = false }: UseSerialDevice
       console.log('Serial port connected');
 
       // 읽기 시작
-      if (port.readable && onData) {
+      if (port.readable) {
         setIsReading(true);
         isReadingRef.current = true;
 
@@ -85,6 +91,8 @@ export function useSerialDevice({ onData, autoConnect = false }: UseSerialDevice
         const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
         const reader = textDecoder.readable.getReader();
         readerRef.current = reader;
+
+        console.log('Serial reader started');
 
         // 데이터 읽기 루프
         (async () => {
@@ -95,9 +103,13 @@ export function useSerialDevice({ onData, autoConnect = false }: UseSerialDevice
                 break;
               }
               if (value) {
+                console.log('Serial data received:', value);
                 // 받은 데이터를 한 문자씩 처리
                 for (const char of value) {
-                  onData(char);
+                  // 항상 최신 onData 콜백 사용
+                  if (onDataRef.current) {
+                    onDataRef.current(char);
+                  }
                 }
               }
             }
@@ -106,6 +118,7 @@ export function useSerialDevice({ onData, autoConnect = false }: UseSerialDevice
             setError('데이터 읽기 중 오류가 발생했습니다.');
           } finally {
             reader.releaseLock();
+            console.log('Serial reader stopped');
           }
         })();
       }

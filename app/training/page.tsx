@@ -86,13 +86,22 @@ function TrainingContent() {
             // 첫 번째 허가된 포트 사용
             const port = ports[0];
 
-            // 포트가 아직 열리지 않았으면 열기
-            if (!port.readable) {
-              await port.open({ baudRate: 9600 });
-              console.log('Serial port opened for training');
+            // 포트가 이미 열려있으면 그대로 사용
+            if (port.readable) {
+              console.log('Serial port already open, reusing for training');
+              setSerialPort(port);
+            } else {
+              // 포트가 닫혀있으면 열기
+              try {
+                await port.open({ baudRate: 9600 });
+                console.log('Serial port opened for training');
+                setSerialPort(port);
+              } catch (err) {
+                console.error('Failed to open serial port:', err);
+              }
             }
-
-            setSerialPort(port);
+          } else {
+            console.warn('No serial ports found');
           }
         } catch (error) {
           console.error('Failed to get serial ports:', error);
@@ -100,6 +109,8 @@ function TrainingContent() {
       };
       getPorts();
     }
+
+    // 컴포넌트 언마운트 시 포트 닫지 않음 (메인 페이지로 돌아갈 때 재사용하기 위해)
   }, [inputDevice]);
 
   // Custom hooks

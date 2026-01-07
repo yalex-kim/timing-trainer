@@ -34,9 +34,13 @@ export default function InputDeviceSelector({
     autoConnect: false, // 수동 연결 모드로 변경
     onData: useCallback((char: string) => {
       if (isTestMode) {
+        console.log('Test mode received char:', char, 'charCode:', char.charCodeAt(0));
         const inputType = InputDeviceMapper.fromSerial(char);
         if (inputType) {
-          setTestInputs(prev => [...prev, `${char} → ${inputType}`].slice(-10)); // 최근 10개만 유지
+          setTestInputs(prev => [...prev, `'${char}' → ${inputType}`].slice(-10)); // 최근 10개만 유지
+        } else {
+          // 매핑되지 않은 문자도 표시 (디버깅용)
+          setTestInputs(prev => [...prev, `'${char}' (code: ${char.charCodeAt(0)}) → 매핑 없음`].slice(-10));
         }
       }
     }, [isTestMode]),
@@ -168,17 +172,34 @@ export default function InputDeviceSelector({
                 {/* 테스트 입력 표시 */}
                 {isTestMode && (
                   <div className="bg-purple-50 border border-purple-200 rounded p-2">
-                    <div className="text-xs text-purple-600 font-medium mb-1">
-                      테스트 입력 (최근 10개):
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-xs text-purple-600 font-medium">
+                        테스트 입력 (최근 10개):
+                      </div>
+                      {testInputs.length > 0 && (
+                        <button
+                          onClick={() => setTestInputs([])}
+                          className="text-xs text-purple-600 hover:text-purple-800"
+                        >
+                          지우기
+                        </button>
+                      )}
                     </div>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
                       {testInputs.length === 0 ? (
                         <div className="text-xs text-gray-500 italic">
                           입력 대기 중... (1, 2, 3, 4를 입력하세요)
                         </div>
                       ) : (
                         testInputs.map((input, index) => (
-                          <div key={index} className="text-xs font-mono bg-white rounded px-2 py-1">
+                          <div
+                            key={index}
+                            className={`text-xs font-mono rounded px-2 py-1 ${
+                              input.includes('매핑 없음')
+                                ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                                : 'bg-white text-gray-800'
+                            }`}
+                          >
                             {input}
                           </div>
                         ))
