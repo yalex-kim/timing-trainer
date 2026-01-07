@@ -6,6 +6,7 @@ import { TrainingSettings, DEFAULT_SETTINGS, CustomBodyPart } from '@/types';
 import { UserProfile } from '@/types/evaluation';
 import { calculateAge } from '@/utils/evaluator';
 import { getBodyPartLabel, getBodyPartIcon } from '@/utils/bodyPartColors';
+import InputDeviceSelector, { InputDeviceType } from '@/components/InputDeviceSelector';
 
 export default function Home() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export default function Home() {
   const [showUserForm, setShowUserForm] = useState(false);
   const [mode, setMode] = useState<'training' | 'assessment' | null>(null);
   const [settings, setSettings] = useState<TrainingSettings>(DEFAULT_SETTINGS);
+  const [inputDevice, setInputDevice] = useState<InputDeviceType>('keyboard');
+  const [serialPort, setSerialPort] = useState<SerialPort | null>(null);
 
   // 기본 생년월일 계산 (현 시점 기준 6년 전)
   const getDefaultBirthDate = () => {
@@ -103,6 +106,14 @@ export default function Home() {
     if (!userProfile) {
       alert('사용자 정보를 먼저 입력해주세요.');
       return;
+    }
+
+    // Serial 포트 정보를 localStorage에 저장 (다음 페이지에서 사용)
+    if (inputDevice === 'serial' && serialPort) {
+      // SerialPort 객체는 직렬화할 수 없으므로 플래그만 저장
+      localStorage.setItem('inputDevice', 'serial');
+    } else {
+      localStorage.setItem('inputDevice', 'keyboard');
     }
 
     if (mode === 'assessment') {
@@ -289,6 +300,17 @@ export default function Home() {
               <span>연령별 검사 기준표 보기</span>
             </button>
           </div>
+
+          {/* 입력 장치 선택 */}
+          {mode && (
+            <div className="border-t-2 border-gray-200 pt-4">
+              <InputDeviceSelector
+                selectedDevice={inputDevice}
+                onDeviceChange={setInputDevice}
+                onSerialPortChange={setSerialPort}
+              />
+            </div>
+          )}
 
           {mode === 'training' && (
             <>

@@ -23,7 +23,7 @@ export type InputType = 'left-hand' | 'right-hand' | 'left-foot' | 'right-foot';
 export interface InputEvent {
   type: InputType;
   timestamp: number;        // performance.now() 기준
-  source: 'keyboard' | 'usb' | 'midi' | 'gamepad' | 'touch';
+  source: 'keyboard' | 'usb' | 'midi' | 'gamepad' | 'touch' | 'serial';
   rawData?: any;            // 원본 디바이스 데이터
 }
 

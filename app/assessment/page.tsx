@@ -14,6 +14,7 @@ import {
 import { PatternGenerator, TimingEvaluator } from '@/utils/evaluator';
 import { createNavigationHandlers } from '@/utils/commonHelpers';
 import { useInputHandler } from '@/hooks/useInputHandler';
+import { useSerialDevice } from '@/hooks/useSerialDevice';
 import { useAudioBeep } from '@/hooks/useAudioBeep';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import SessionResults from '@/components/SessionResults';
@@ -49,10 +50,25 @@ type AssessmentPhase = 'ready' | 'countdown' | 'testing' | 'waiting' | 'complete
 function AssessmentContent() {
   const router = useRouter();
 
+  // 입력 장치 설정 가져오기
+  const [inputDevice, setInputDevice] = useState<'keyboard' | 'serial'>('keyboard');
+
+  useEffect(() => {
+    const savedDevice = localStorage.getItem('inputDevice') as 'keyboard' | 'serial' | null;
+    if (savedDevice) {
+      setInputDevice(savedDevice);
+    }
+  }, []);
+
   // Custom hooks
   const { userProfile } = useUserProfile();
   const { playBeep } = useAudioBeep();
   const { handleExit, handleRestart } = createNavigationHandlers(router);
+
+  // Serial 장치 연결 (Serial 모드일 때만)
+  const { connectedPort } = useSerialDevice({
+    autoConnect: inputDevice === 'serial',
+  });
 
   // 검사 진행 상태
   const [currentTestIndex, setCurrentTestIndex] = useState(0);
@@ -226,7 +242,9 @@ function AssessmentContent() {
   // 입력 핸들러 등록
   useInputHandler({
     onInput: handleInput,
-    enableKeyboard: phase === 'testing',
+    enableKeyboard: phase === 'testing' && inputDevice === 'keyboard',
+    enableSerial: phase === 'testing' && inputDevice === 'serial',
+    serialPort: connectedPort,
   });
 
   // 터치 입력 핸들러

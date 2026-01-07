@@ -1,6 +1,6 @@
 /**
  * Custom Hook for Handling Multiple Input Sources
- * Supports: Keyboard, USB HID, MIDI, Gamepad
+ * Supports: Keyboard, USB HID, MIDI, Gamepad, Serial
  */
 
 import { useEffect, useCallback, useRef } from 'react';
@@ -13,6 +13,8 @@ interface UseInputHandlerProps {
   enableMIDI?: boolean;
   enableHID?: boolean;
   enableGamepad?: boolean;
+  enableSerial?: boolean;
+  serialPort?: SerialPort | null;
 }
 
 export function useInputHandler({
@@ -21,12 +23,16 @@ export function useInputHandler({
   enableMIDI = false,
   enableHID = false,
   enableGamepad = false,
+  enableSerial = false,
+  serialPort = null,
 }: UseInputHandlerProps) {
   const startTimeRef = useRef<number>(0);
   const midiAccessRef = useRef<any>(null);
   const hidDeviceRef = useRef<any>(null);
   const gamepadIntervalRef = useRef<number | null>(null);
   const lastGamepadStateRef = useRef<Map<number, boolean>>(new Map());
+  const serialReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const isSerialReadingRef = useRef(false);
 
   // 세션 시작 시간 설정
   useEffect(() => {
@@ -256,6 +262,77 @@ export function useInputHandler({
       window.removeEventListener('gamepaddisconnected', handleGamepadDisconnected);
     };
   }, [enableGamepad, onInput]);
+
+  // ============================================================================
+  // Serial 입력 처리
+  // ============================================================================
+
+  useEffect(() => {
+    if (!enableSerial || !serialPort) return;
+
+    const setupSerial = async () => {
+      try {
+        // 포트가 이미 열려있지 않으면 무시
+        if (!serialPort.readable) {
+          console.warn('Serial port is not readable');
+          return;
+        }
+
+        isSerialReadingRef.current = true;
+
+        const textDecoder = new TextDecoderStream();
+        const readableStreamClosed = serialPort.readable.pipeTo(textDecoder.writable);
+        const reader = textDecoder.readable.getReader();
+        serialReaderRef.current = reader;
+
+        // 데이터 읽기 루프
+        while (isSerialReadingRef.current) {
+          try {
+            const { value, done } = await reader.read();
+            if (done || !isSerialReadingRef.current) {
+              break;
+            }
+
+            if (value) {
+              // 받은 데이터를 한 문자씩 처리
+              for (const char of value) {
+                const inputType = InputDeviceMapper.fromSerial(char);
+                if (!inputType) continue;
+
+                const inputEvent: InputEvent = {
+                  type: inputType,
+                  timestamp: performance.now() - startTimeRef.current,
+                  source: 'serial',
+                  rawData: { char },
+                };
+
+                onInput(inputEvent);
+              }
+            }
+          } catch (error) {
+            if (isSerialReadingRef.current) {
+              console.error('Error reading from serial port:', error);
+            }
+            break;
+          }
+        }
+
+        reader.releaseLock();
+      } catch (error) {
+        console.error('Failed to setup serial:', error);
+      }
+    };
+
+    setupSerial();
+
+    return () => {
+      isSerialReadingRef.current = false;
+      if (serialReaderRef.current) {
+        serialReaderRef.current.cancel().catch(console.error);
+        serialReaderRef.current = null;
+      }
+    };
+  }, [enableSerial, serialPort, onInput]);
 
   return null;
 }

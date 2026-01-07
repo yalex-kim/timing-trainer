@@ -14,6 +14,7 @@ import {
 import { PatternGenerator, TimingEvaluator } from '@/utils/evaluator';
 import { createNavigationHandlers } from '@/utils/commonHelpers';
 import { useInputHandler } from '@/hooks/useInputHandler';
+import { useSerialDevice } from '@/hooks/useSerialDevice';
 import { useAudioBeep } from '@/hooks/useAudioBeep';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import SessionResults from '@/components/SessionResults';
@@ -64,10 +65,25 @@ function TrainingContent() {
   const [currentSide, setCurrentSide] = useState<'left' | 'right'>('left');
   const [isActive, setIsActive] = useState(false);
 
+  // 입력 장치 설정 가져오기
+  const [inputDevice, setInputDevice] = useState<'keyboard' | 'serial'>('keyboard');
+
+  useEffect(() => {
+    const savedDevice = localStorage.getItem('inputDevice') as 'keyboard' | 'serial' | null;
+    if (savedDevice) {
+      setInputDevice(savedDevice);
+    }
+  }, []);
+
   // Custom hooks
   const { userProfile } = useUserProfile();
   const { playBeep } = useAudioBeep();
   const { handleExit, handleRestart } = createNavigationHandlers(router);
+
+  // Serial 장치 연결 (Serial 모드일 때만)
+  const { connectedPort } = useSerialDevice({
+    autoConnect: inputDevice === 'serial',
+  });
 
   const intervalMs = 60000 / bpm;
   const totalBeats = Math.floor((duration * 60 * 1000) / intervalMs);
@@ -228,10 +244,12 @@ function TrainingContent() {
     });
   }, [intervalMs]);
 
-  // 입력 핸들러 등록 (키보드)
+  // 입력 핸들러 등록
   useInputHandler({
     onInput: handleInput,
-    enableKeyboard: phase === 'training',
+    enableKeyboard: phase === 'training' && inputDevice === 'keyboard',
+    enableSerial: phase === 'training' && inputDevice === 'serial',
+    serialPort: connectedPort,
   });
 
   // 터치 입력 핸들러

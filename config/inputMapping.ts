@@ -93,6 +93,25 @@ export const GAMEPAD_BUTTON_LABELS: Record<InputType, string> = {
 };
 
 // ============================================================================
+// Serial Port 매핑 설정
+// ============================================================================
+
+export const SERIAL_CHAR_MAPPING: Record<string, InputType> = {
+  '1': 'left-hand',
+  '2': 'right-hand',
+  '3': 'left-foot',
+  '4': 'right-foot',
+};
+
+// Serial 문자 표시용 레이블
+export const SERIAL_CHAR_LABELS: Record<InputType, string> = {
+  'left-hand': '1',
+  'right-hand': '2',
+  'left-foot': '3',
+  'right-foot': '4',
+};
+
+// ============================================================================
 // 통합 매핑 함수
 // ============================================================================
 
@@ -126,6 +145,13 @@ export class InputDeviceMapper {
   }
 
   /**
+   * Serial 문자를 InputType으로 변환
+   */
+  static fromSerial(char: string): InputType | null {
+    return SERIAL_CHAR_MAPPING[char] || null;
+  }
+
+  /**
    * InputType에 대한 키보드 레이블 가져오기
    */
   static getKeyboardLabel(inputType: InputType): string {
@@ -151,6 +177,13 @@ export class InputDeviceMapper {
    */
   static getGamepadLabel(inputType: InputType): string {
     return GAMEPAD_BUTTON_LABELS[inputType];
+  }
+
+  /**
+   * InputType에 대한 Serial 레이블 가져오기
+   */
+  static getSerialLabel(inputType: InputType): string {
+    return SERIAL_CHAR_LABELS[inputType];
   }
 }
 
