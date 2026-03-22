@@ -332,21 +332,22 @@ export class TimingEvaluator {
 
     const totalResponses = correctInputBeats.length;
 
-    // 피드백 카테고리별 집계
+    // 피드백 카테고리별 집계 (아예 입력 없는 비트도 miss로 포함)
+    const noInputMissCount = beats.length - validBeats.length;
     const feedbackCounts = {
       perfect: validBeats.filter((b) => b.feedback?.category === 'perfect').length,
       excellent: validBeats.filter((b) => b.feedback?.category === 'excellent').length,
       good: validBeats.filter((b) => b.feedback?.category === 'good').length,
       fair: validBeats.filter((b) => b.feedback?.category === 'fair').length,
       poor: validBeats.filter((b) => b.feedback?.category === 'poor').length,
-      miss: validBeats.filter((b) => b.feedback?.category === 'miss').length,
+      miss: validBeats.filter((b) => b.feedback?.category === 'miss').length + noInputMissCount,
     };
 
-    // 평균 점수
+    // 평균 점수 (입력 없는 비트는 0점으로 전체 비트 수로 나눔)
     const averagePoints =
-      validBeats.length > 0
+      beats.length > 0
         ? validBeats.reduce((sum, b) => sum + (b.feedback?.points || 0), 0) /
-          validBeats.length
+          beats.length
         : 0;
 
     // 일관성
